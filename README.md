@@ -1,5 +1,7 @@
 # SVB — Scalable Vector Binary
 
+<p align="center"><img src="docs/social-card.png" alt="SVB logo: an S-shaped vector path whose anchor points are binary bits (filled = 1, hollow = 0)" width="640"></p>
+
 **A binary vector-image format for the web** · v0.1 · specification + reference implementation.
 
 **▶ Live demo: <https://kinti.github.io/svb/demo/>** — `<img src="*.svb">` working in today's browsers via a Service Worker. No plugin, no new browser engine.
@@ -21,6 +23,10 @@ SVB turns each problem into a concrete improvement path:
 - **A chunk container built for evolution** — decoders skip chunks they don't know, so progressive rendering (v0.2) and declarative animation without SMIL (v0.2, reserved) can be added without breaking anything.
 
 Precedents, honestly stated: TinyVG proved a binary SVG subset can hit ~39% of the size — but it targets embedded systems, with no web runtime, no animation, no accessibility. Lottie and Rive prove that "format + own runtime" wins adoption *without* waiting for browser vendors — the Service Worker polyfill in this repo is exactly that path. And JPEG XL is the reminder that being technically superior is not enough; adoption is political. SVB is designed so that even the "it never takes off" scenario leaves value behind: a rigorous spec, a working codec, and a live demo.
+
+## The logo, in its own format
+
+The mark — an S-shaped vector path whose anchor points are binary bits (filled = 1, hollow = 0) — is drawn entirely within SVB v0.1's own subset (solid fills, no text, no gradients), so the format can carry its own branding: **the logo as SVG weighs 789 B; as `.svb` it weighs 150 B (19%)**. Palette `#7A1F2B` / `#F5F0E6` passes WCAG AAA (contrast 8.98:1, verified with the author's own [a11y-toolkit](https://github.com/kinti/a11y-toolkit)). Files in [`brand/`](brand/).
 
 ## Numbers — real-world corpus
 

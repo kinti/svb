@@ -1,5 +1,7 @@
 # SVB — Scalable Vector Binary
 
+<p align="center"><img src="docs/social-card.png" alt="Logo de SVB: un camino vectorial en forma de S cuyos puntos de ancla son bits (llenos = 1, hueco = 0)" width="640"></p>
+
 **Formato binario de imágenes vectoriales para la web** · v0.1 · especificación + implementación de referencia.
 
 **▶ Demo en vivo: <https://kinti.github.io/svb/demo/>** — `<img src="*.svb">` funcionando hoy en cualquier navegador vía Service Worker.
@@ -21,6 +23,10 @@ SVB convierte cada problema en una vía de mejora concreta:
 - **Contenedor por chunks diseñado para evolucionar** — los decodificadores saltan los chunks que no conocen, así que el render progresivo (v0.2) y la animación declarativa sin SMIL (v0.2, reservada) se añaden sin romper nada.
 
 Precedentes, con honestidad: TinyVG demostró que un subconjunto binario de SVG llega al ~39% del tamaño — pero es para sistemas embebidos, sin runtime web, sin animación, sin accesibilidad. Lottie y Rive demuestran que "formato + runtime propio" gana adopción *sin* esperar a los navegadores — el polyfill Service Worker de este repo es exactamente ese camino. Y JPEG XL es el recordatorio de que ser técnicamente superior no basta: la adopción es política. SVB está diseñado para que incluso el escenario "no despega" deje valor: una spec rigurosa, un codec funcionando y una demo en vivo.
+
+## El logo, en su propio formato
+
+La marca — un camino vectorial en forma de S cuyos puntos de ancla son bits (llenos = 1, hueco = 0) — está dibujada dentro del propio subconjunto de SVB v0.1 (rellenos sólidos, sin texto, sin gradientes), para que el formato pueda llevar su propia marca: **el logo en SVG pesa 789 B; en `.svb` pesa 150 B (19%)**. La paleta `#7A1F2B` / `#F5F0E6` pasa WCAG AAA (contraste 8,98:1, verificado con el [a11y-toolkit](https://github.com/kinti/a11y-toolkit) del autor). Ficheros en [`brand/`](brand/).
 
 ## Números — corpus real
 
