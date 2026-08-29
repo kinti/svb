@@ -5,6 +5,13 @@
 **Formato binario de imágenes vectoriales para la web** · v0.1 · especificación + implementación de referencia.
 
 [![Tests](https://github.com/kinti/svb/actions/workflows/tests.yml/badge.svg)](https://github.com/kinti/svb/actions/workflows/tests.yml)
+[![CodeQL](https://github.com/kinti/svb/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/kinti/svb/security/code-scanning)
+[![Release](https://img.shields.io/github/v/release/kinti/svb)](https://github.com/kinti/svb/releases)
+[![License](https://img.shields.io/github/license/kinti/svb)](LICENSE)
+![Node](https://img.shields.io/badge/node-%E2%89%A518-brightgreen)
+![Dependencies](https://img.shields.io/badge/dependencies-0-2ea44f)
+![Median size](https://img.shields.io/badge/median_svb%2Fsvg-%C3%970.272-7A1F2B)
+[![Live demo](https://img.shields.io/badge/live_demo-kinti.github.io%2Fsvb-7A1F2B)](https://kinti.github.io/svb/demo/)
 
 **▶ Demo en vivo: <https://kinti.github.io/svb/demo/>** — `<img src="*.svb">` funcionando hoy en cualquier navegador vía Service Worker.
 
