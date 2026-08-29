@@ -1,174 +1,176 @@
 # SVB — Scalable Vector Binary
 
-**Especificación v0.1 (borrador de trabajo)** · 2026-08-29
-*Formato binario de gráficos vectoriales para la web: el tamaño de un binario, con accesibilidad y progreso como ciudadanos de primera clase.*
+**Specification v0.1 (working draft)** · 2026-08-29
+*A binary vector-graphics format for the web: binary size, with accessibility and progressive rendering as first-class citizens.*
+
+> Spanish version: [SPEC.es.md](SPEC.es.md). The English version is normative.
 
 ---
 
-## 1. Objetivos y no-objetivos
+## 1. Goals and non-goals
 
-**Objetivos**
+**Goals**
 
-1. **Tamaño**: reducir drásticamente los SVG reales (iconos, ilustraciones, logotipos) incluso antes de compresión de transporte. Los datos de coordenadas son la mayor parte de un SVG optimizado; en texto cuestan 3–8 bytes por número, aquí 1–2.
-2. **Progresivo por diseño**: contenedor por chunks; un renderizador puede pintar con los primeros chunks y refinar con los siguientes. Un decodificador v1 ignora los chunks que no conoce.
-3. **Accesibilidad obligatoria y verificable**: el nombre accesible y la descripción viven en un chunk propio, con posición fija en la gramática. Un validador puede exigirlo; un peritaje puede certificarlo. En SVG son atributos opcionales que casi nadie pone.
-4. **Animación declarativa sin SMIL** (reservado, v0.2): chunk dedicado, no texto, no JavaScript.
-5. **Agnóstico del renderizador**: el formato describe geometría y estilo; cómo se pinta (DOM→SVG, canvas, WebGL, nativo) no forma parte de la especificación.
+1. **Size**: drastically reduce real-world SVG (icons, illustrations, logos) even *before* transport compression. Coordinate data is the bulk of an optimized SVG; as text it costs 3–8 bytes per number, here 1–2.
+2. **Progressive by design**: a chunk container; a renderer can paint with the first chunks and refine with later ones. A v1 decoder ignores chunks it doesn't know.
+3. **Mandatory, verifiable accessibility**: the accessible name and description live in their own chunk, with a fixed position in the grammar. A validator can require it; an auditor can certify it. In SVG these are optional attributes that almost nobody ships.
+4. **Declarative animation without SMIL** (reserved, v0.2): a dedicated chunk — not text, not JavaScript.
+5. **Renderer-agnostic**: the format describes geometry and style; how it is painted (DOM→SVG, canvas, WebGL, native) is outside this specification.
 
-**No-objetivos en v0.1**
+**Non-goals in v0.1**
 
-- Reemplazar el 100% de SVG 1.1. El subconjunto objetivo cubre el ~90% del uso web real: `g`, `path`, `rect`, `circle`, `ellipse`, `line`, `polyline`, `polygon` con relleno sólido, trazo y transformadas. Quedan fuera por ahora (documentado): gradientes, filtros, `<text>`, `<use>/<defs>`, `<image>`, CSS embebido, clip/mask.
-- Ser un estándar de consorcio. v0.1 es una especificación abierta con implementación de referencia; la vía de estandarización se decide con adopción, no antes.
+- Replacing 100% of SVG 1.1. The target subset covers ~90% of real web usage: `g`, `path`, `rect`, `circle`, `ellipse`, `line`, `polyline`, `polygon` with solid fill, stroke and transforms. Out of scope for now (documented): gradients, filters, `<text>`, `<use>/<defs>`, `<image>`, embedded CSS, clip/mask.
+- Being a consortium standard. v0.1 is an open specification with a reference implementation; the standardization route is decided by adoption, not in advance.
 
-**Precedentes**: TinyVG demostró que un SVG binario pesa ~39% del original, pero su nicho son los sistemas embebidos (sin animación, sin accesibilidad, sin entorno web). SVB apunta al entorno web: Service Worker como polyfill universal, chunk de accesibilidad, render progresivo y animación reservada. JPEG XL es el precedente de éxito técnico con adopción política difícil; Lottie y Rive, el de "formato + runtime propio" sin pedir permiso a los navegadores.
+**Precedents**: TinyVG proved a binary SVG subset can weigh ~39% of the original — but it targets embedded systems (no animation, no accessibility, no web runtime). SVB targets the web: a Service Worker as universal polyfill, an accessibility chunk, progressive rendering and reserved animation. JPEG XL is the precedent of technical success with hard political adoption; Lottie and Rive, that of "format + own runtime" without asking browsers for permission.
 
-## 2. Convenciones
+## 2. Conventions
 
-- Todos los enteros en **little-endian** salvo los varint, que son byte a byte.
-- **varuint**: entero sin signo en LEB128 (7 bits por byte, bit alto = continuación).
-- **varint**: entero con signo codificado en zigzag (`n ≥ 0 → 2n`, `n < 0 → −2n−1`) y luego como varuint.
-- **fixed**: valor de coordenada cuantizado como `round(valor × coord_scale)` y almacenado como varuint (absoluto) o varint (delta). `coord_scale` viaja en la cabecera (p. ej. `64` ≈ 2 decimales; `256` ≈ subpíxel). Igual que SVG, el lienzo es sin unidades.
-- Longitudes de cadena: `varuint` + UTF-8.
-- Todo campo marcado *reservado* debe escribirse a 0 y ser ignorado al leer.
+- All integers are **little-endian** except varints, which are byte-wise.
+- **varuint**: unsigned integer in LEB128 (7 bits per byte, high bit = continuation).
+- **varint**: signed integer zigzag-encoded (`n ≥ 0 → 2n`, `n < 0 → −2n−1`), then stored as varuint.
+- **fixed**: a coordinate value quantized as `round(value × coord_scale)`, stored as varuint (absolute) or varint (delta). `coord_scale` travels in the file header (e.g. `64` ≈ 2 decimals; `256` ≈ subpixel). As in SVG, the canvas is unitless.
+- String lengths: `varuint` + UTF-8.
+- Fields marked *reserved* must be written as 0 and ignored when read.
 
-## 3. Cabecera de archivo
+## 3. File header
 
-Bytes iniciales del archivo, nunca comprimidos:
+The initial bytes of the file, never compressed:
 
-| Campo        | Tipo    | Valor                                             |
-|--------------|---------|---------------------------------------------------|
-| magic        | 3 bytes | `53 56 42` (`"SVB"`)                              |
-| version      | u8      | `1`                                               |
-| flags        | u8      | ver tabla                                         |
-| width        | varuint | ancho del lienzo en unidades de usuario (≤ 65535) |
-| height       | varuint | alto del lienzo                                   |
-| coord_scale  | varuint | factor de cuantización de coordenadas             |
+| Field       | Type    | Value                                                 |
+|-------------|---------|-------------------------------------------------------|
+| magic       | 3 bytes | `53 56 42` (`"SVB"`)                                  |
+| version     | u8      | `1`                                                   |
+| flags       | u8      | see table                                             |
+| width       | varuint | canvas width in user units (≤ 65535)                  |
+| height      | varuint | canvas height                                         |
+| coord_scale | varuint | coordinate quantization factor                        |
 
 **flags**
 
-| bit | nombre        | significado                                                     |
-|-----|---------------|-----------------------------------------------------------------|
-| 0   | COMPRESSED    | el flujo de chunks va comprimido en DEFLATE (raw, sin cabecera zlib) |
-| 1   | HAS_A11Y      | existe chunk A11Y                                               |
-| 2   | HAS_ANIMATION | reservado (v0.2)                                                |
-| 3   | HAS_STYLE     | existe chunk STYLE                                              |
-| 4–7 | —             | reservados, 0                                                   |
+| bit | name          | meaning                                                                |
+|-----|---------------|------------------------------------------------------------------------|
+| 0   | COMPRESSED    | the chunk stream is DEFLATE-compressed (raw, no zlib header)           |
+| 1   | HAS_A11Y      | an A11Y chunk exists                                                   |
+| 2   | HAS_ANIMATION | reserved (v0.2)                                                        |
+| 3   | HAS_STYLE     | a STYLE chunk exists                                                   |
+| 4–7 | —             | reserved, 0                                                            |
 
-## 4. Contenedor por chunks
+## 4. Chunk container
 
-Tras la cabecera (y, si procede, descomprimir el resto del archivo), el archivo es una secuencia:
+After the header (and, if applicable, decompressing the rest of the file), the file is a sequence:
 
 ```
 chunk  =  tag:u8  size:varuint  body[size]
 ```
 
-| tag    | chunk | obligatorio | contenido                                  |
-|--------|-------|-------------|--------------------------------------------|
-| `0x01` | STYLE | no          | tabla de estilos compartidos               |
-| `0x02` | GEOM  | sí, 1 vez   | lista ordenada de elementos                |
-| `0x03` | A11Y  | no (flag)   | nombre/descripción accesibles              |
-| `0x04` | ANIM  | reservado   | animación declarativa (v0.2)               |
-| `0x05` | META  | no          | metadatos (generador, licencia…)           |
-| resto  | EXT   | no          | **debe saltarse** leyendo `size` → compatibilidad futura |
+| tag    | chunk | mandatory | content                                        |
+|--------|-------|-----------|------------------------------------------------|
+| `0x01` | STYLE | no        | table of shared styles                         |
+| `0x02` | GEOM  | yes, once | ordered list of elements                       |
+| `0x03` | A11Y  | no (flag) | accessible name/description                    |
+| `0x04` | ANIM  | reserved  | declarative animation (v0.2)                   |
+| `0x05` | META  | no        | metadata (generator, license…)                 |
+| rest   | EXT   | no        | **must be skipped** by reading `size` → forward compat |
 
-Reglas: un decodificador conforme debe poder saltar cualquier chunk desconocido sin bloquear el render. El render progresivo (v0.2) explotará esta propiedad ordenando los chunks de "base renderizable" a "refino".
+Rules: a conforming decoder must be able to skip any unknown chunk without blocking rendering. Progressive rendering (v0.2) will exploit this property by ordering chunks from "renderable base" to "refinement".
 
-## 5. Chunk STYLE (0x01)
+## 5. STYLE chunk (0x01)
 
-Tabla de estilos indexada; los elementos referencian la entrada por índice. La internación de estilos repetidos (p. ej. el color de marca en un icono) es una de las ganancias frente a SVG.
+An indexed style table; elements reference an entry by index. Interning repeated styles (e.g. a brand color in an icon) is one of the wins over SVG.
 
 ```
 count: varuint
-entrada ×count:
+entry ×count:
   style_byte: u8
-      bit 0–1  fill:    0 none · 1 color · 2 color+alfa
-      bit 2–3  stroke:  0 none · 1 color · 2 color+alfa
-      bit 4    tiene stroke-width
-      bit 5    tiene byte de caps/join
-      bit 6    tiene dash array
-      bit 7    fill-rule evenodd (0 = nonzero)
-  [ fill:  R,G,B (u8×3) ]              si fill ≠ 0
-  [ fill alfa: u8 ]                    si fill = 2
-  [ stroke: R,G,B ]                    si stroke ≠ 0
-  [ stroke alfa: u8 ]                  si stroke = 2
-  [ stroke-width: varuint fixed ]      si bit 4
-  [ caps/join: u8 ]                    si bit 5   (nibble bajo: cap 0 butt · 1 round · 2 square;
-                                                    nibble alto: join 0 miter · 1 round · 2 bevel)
-  [ dash: n:varuint, n × varuint fixed ] si bit 6
+      bit 0–1  fill:    0 none · 1 color · 2 color+alpha
+      bit 2–3  stroke:  0 none · 1 color · 2 color+alpha
+      bit 4    has stroke-width
+      bit 5    has caps/join byte
+      bit 6    has dash array
+      bit 7    evenodd fill-rule (0 = nonzero)
+  [ fill:  R,G,B (u8×3) ]              if fill ≠ 0
+  [ fill alpha: u8 ]                   if fill = 2
+  [ stroke: R,G,B ]                    if stroke ≠ 0
+  [ stroke alpha: u8 ]                 if stroke = 2
+  [ stroke-width: varuint fixed ]      if bit 4
+  [ caps/join: u8 ]                    if bit 5   (low nibble: cap 0 butt · 1 round · 2 square;
+                                                    high nibble: join 0 miter · 1 round · 2 bevel)
+  [ dash: n:varuint, n × varuint fixed ] if bit 6
 ```
 
-## 6. Chunk GEOM (0x02)
+## 6. GEOM chunk (0x02)
 
-Elementos en **orden de documento** (orden de pintado y de lectura).
+Elements in **document order** (paint order and reading order).
 
 ```
 count: varuint
-elemento ×count:
+element ×count:
   elem_byte: u8
-      bit 0–3  forma: 1 rect · 2 circle · 3 ellipse · 4 line · 5 polyline · 6 polygon · 7 path
-      bit 4    tiene transform: matriz 6 × varint fixed (orden SVG matrix(a,b,c,d,e,f))
-      bit 5    estilo inline (misma codificación que una entrada STYLE, en línea)
-      bit 6–7  reservados, 0
-  [ style_index: varuint ]     si bit 5 = 0
-  [ matriz a,b,c,d,e,f ]       si bit 4
-  datos de forma (posiciones absolutas → **varint** con signo; tamaños y radios → **varuint**):
+      bit 0–3  shape: 1 rect · 2 circle · 3 ellipse · 4 line · 5 polyline · 6 polygon · 7 path
+      bit 4    has transform: 6 × varint fixed matrix (SVG matrix(a,b,c,d,e,f) order)
+      bit 5    inline style (same encoding as a STYLE entry, in place)
+      bit 6–7  reserved, 0
+  [ style_index: varuint ]     if bit 5 = 0
+  [ matrix a,b,c,d,e,f ]       if bit 4
+  shape data (absolute positions → signed **varint**; sizes and radii → **varuint**):
     rect      x:varint, y:varint, w:varuint, h:varuint, rx:varuint, ry:varuint
     circle    cx:varint, cy:varint, r:varuint
     ellipse   cx:varint, cy:varint, rx:varuint, ry:varuint
     line      x1, y1, x2, y2 (varint ×4)
-    polyline  count:varuint, x0:varint, y0:varint, luego (count−1) pares varint delta
-    polygon   idéntico a polyline
-    path      cmd_count: varuint, seguido de comandos:
-                cmd_byte: bits 0–2 → 0 M · 1 L · 2 C · 3 Q · 4 A · 5 Z ; bits 3–7 reservados, 0
-                  M · L → 1 punto
-                  C     → 3 puntos
-                  Q     → 2 puntos
-                  A     → rx:varuint, ry:varuint, rot:varint (grados, entero),
-                           flags:u8 (bit0 large-arc, bit1 sweep), punto final
-                  Z     → nada
+    polyline  count:varuint, x0:varint, y0:varint, then (count−1) varint delta pairs
+    polygon   identical to polyline
+    path      cmd_count: varuint, followed by commands:
+                cmd_byte: bits 0–2 → 0 M · 1 L · 2 C · 3 Q · 4 A · 5 Z ; bits 3–7 reserved, 0
+                  M · L → 1 point
+                  C     → 3 points
+                  Q     → 2 points
+                  A     → rx:varuint, ry:varuint, rot:varint (degrees, integer),
+                           flags:u8 (bit0 large-arc, bit1 sweep), end point
+                  Z     → nothing
 ```
 
-**Codificación de puntos en `path`**: el primer `M` de cada path es absoluto (varint con signo ×2, admite coordenadas negativas fuera del lienzo). Todo punto posterior se almacena como **delta zigzag respecto al lápiz** (la posición actual tras el punto anterior), sea cual sea el comando. Esta codificación delta es la principal fuente de ahorro: en coordenadas contiguas, los deltas caben en 1 byte donde SVG gasta 6–10 caracteres.
+**Point encoding in `path`**: the first `M` of each path is absolute (two signed varints — negative coordinates are legal). Every subsequent point is stored as a **zigzag delta from the pen** (the current position after the previous point), regardless of the command. This delta encoding is the main source of savings: for contiguous coordinates, deltas fit in 1 byte where SVG spends 6–10 characters.
 
-**Normalización en el codificador**: `S→C`, `T→Q`, `H/V→L`, relativos→absolutos antes de cuantizar. El decodificador solo implementa los 6 comandos canónicos.
+**Normalization in the encoder**: `S→C`, `T→Q`, `H/V→L`, relative→absolute before quantization. The decoder only implements the 6 canonical commands.
 
-**viewBox y herencia**: el codificador "hornea" el `viewBox` raíz (traslación+escala) y las transformaciones anidadas de los `g` en la matriz de cada elemento. Un elemento sin transformación efectiva no lleva bit 4.
+**viewBox and inheritance**: the encoder "bakes" the root `viewBox` (translation+scale) and the nested transforms of `g` elements into each element's matrix. An element with no effective transform carries no bit 4.
 
-## 7. Chunk A11Y (0x03)
+## 7. A11Y chunk (0x03)
 
-Ciudadano de primera clase: presencia anunciada por flag en la cabecera y gramática fija, validable sin interpretar la geometría.
+A first-class citizen: presence announced by a header flag and a fixed grammar, verifiable without interpreting the geometry.
 
 ```
-name: lenpfx-utf8          nombre accesible del documento (puede ser "")
-desc: lenpfx-utf8          descripción
+name: lenpfx-utf8          document accessible name (may be "")
+desc: lenpfx-utf8          description
 labels: count: varuint
-  entrada ×count:
-    elem_index: varuint     índice del elemento en GEOM
+  entry ×count:
+    elem_index: varuint     element index within GEOM
     name:        lenpfx-utf8
     desc:        lenpfx-utf8
 ```
 
-Reglas de emisión del decodificador hacia SVG: `name` → `<title>` e `desc` → `<desc>` como primeros hijos de la raíz, más `role="img"` y `aria-labelledby` cuando proceda. Las etiquetas por elemento → `<title>` hijo del elemento. Un codificador debe extraer estos datos de `<title>`, `<desc>` y `aria-label*` presentes en el SVG de origen.
+Decoder emission rules towards SVG: `name` → `<title>` and `desc` → `<desc>` as the root's first children, plus `role="img"` and labeling where applicable. Per-element labels → a `<title>` child of the element. An encoder must extract this data from the `<title>`, `<desc>` and `aria-label*` present in the source SVG.
 
-**Norma del formato**: un archivo SVB conforme debe declarar flag HAS_A11Y. La no-declaración es válida pero marcada como "no conforme-a11y" por los validadores (base para auditoría/certificación posterior).
+**Format rule**: a conforming SVB file must declare the HAS_A11Y flag. Omitting it is valid but flagged "non-a11y-conformant" by validators (basis for later audit/certification).
 
-## 8. Chunk META (0x05)
+## 8. META chunk (0x05)
 
-`generator: lenpfx-utf8` — cadena informativa, ignorable. Reservado para licencia y autoría en v0.2.
+`generator: lenpfx-utf8` — informative string, ignorable. Reserved for license and authorship in v0.2.
 
-## 9. Chunk ANIM (0x04) — reservado
+## 9. ANIM chunk (0x04) — reserved
 
-Diseño previsto (no normativo en v0.1): pista(s) de keyframes por elemento o propiedad (`transform`, opacidad, geometría), temporización con curvas cúbicas, sin expresiones. Objetivo: sustituir el 100% de los usos vivos de SMIL con coste de bytes de orden inferior.
+Planned design (non-normative in v0.1): keyframe track(s) per element or property (`transform`, opacity, geometry), timing with cubic curves, no expressions. Goal: replace 100% of SMIL's living usage at a byte cost of a lower order.
 
-## 10. Tipo de medio y registro
+## 10. Media type and registration
 
-- `image/x-svb` — hasta completar registro.
-- Objetivo: `image/svb` en el registro IANA de tipos de medios (revisión de experto, RFC 6838), con esta especificación como referencia.
+- `image/x-svb` — until registration completes.
+- Target: `image/svb` in the IANA media type registry (expert review, RFC 6838), with this specification as reference.
 
-## 11. Conformidad
+## 11. Conformance
 
-Un **codificador conforme** emite cabecera válida, al menos un chunk GEOM, chunks en orden creciente de tag y ningún byte fuera de chunk. Un **decodificador conforme** acepta cualquier archivo v1, ignora chunks desconocidos y renderiza el subconjunto GEOM+STYLE; el soporte de A11Y es obligatorio para el sello "SVB accesible".
+A conforming **encoder** emits a valid header, at least one GEOM chunk, chunks in ascending tag order, and no bytes outside chunks. A conforming **decoder** accepts any v1 file, ignores unknown chunks, and renders the GEOM+STYLE subset; A11Y support is mandatory for the "accessible SVB" seal.
 
-## 12. Historial
+## 12. History
 
-- **v0.1 (2026-08-29)** — primer borrador público: cabecera, contenedor por chunks, STYLE/GEOM/A11Y/META, subconjunto geométrico, ANIM reservado.
+- **v0.1 (2026-08-29)** — first public draft: header, chunk container, STYLE/GEOM/A11Y/META, geometric subset, ANIM reserved.

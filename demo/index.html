@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SVB v0.1 — demo con Service Worker</title>
+<title>SVB v0.1 — Service Worker demo</title>
 <style>
   :root { color-scheme: light dark; }
   body { font: 16px/1.5 system-ui, sans-serif; max-width: 960px; margin: 2rem auto; padding: 0 1rem; }
@@ -21,8 +21,8 @@
 </head>
 <body>
 <h1>SVB — Scalable Vector Binary <small>v0.1</small></h1>
-<p>Los <code>&lt;img src="*.svb"&gt;</code> de abajo los sirve un <strong>Service Worker</strong>: intercepta la petición,
-decodifica el binario y responde SVG normal. Sin plugin y sin navegador especial — es la vía de entrada del formato.</p>
+<p>The <code>&lt;img src="*.svb"&gt;</code> below are served by a <strong>Service Worker</strong>: it intercepts the request,
+decodes the binary and responds with regular SVG. No plugin, no special browser — this is the format's entry path.</p>
 
 <h2>Original vs .svb</h2>
 <div class="row">
@@ -32,11 +32,11 @@ decodifica el binario y responde SVG normal. Sin plugin y sin navegador especial
   <figure><div class="checker"><img class="sv" id="img-logo-star" alt="logotipo estrella en SVB"></div><figcaption>logo-star.svb <span id="st-logo-star"></span></figcaption></figure>
 </div>
 
-<h2>Tamaños</h2>
-<table id="sizes"><thead><tr><th>archivo</th><th>svg</th><th>.svb</th><th>ahorro</th></tr></thead><tbody></tbody></table>
+<h2>Sizes</h2>
+<table id="sizes"><thead><tr><th>file</th><th>svg</th><th>.svb</th><th>saving</th></tr></thead><tbody></tbody></table>
 
-<h2>Accesibilidad embebida</h2>
-<p>El chunk A11Y viaja dentro del binario. La cabecera que decodifica el Service Worker para <code>icon-pin.svb</code>:</p>
+<h2>Built-in accessibility</h2>
+<p>The A11Y chunk travels inside the binary. The header the Service Worker decodes for <code>icon-pin.svb</code>:</p>
 <pre id="a11y"></pre>
 
 <script type="module">

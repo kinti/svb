@@ -1,0 +1,96 @@
+# SVB — Scalable Vector Binary
+
+**Formato binario de imágenes vectoriales para la web** · v0.1 · especificación + implementación de referencia.
+
+**▶ Demo en vivo: <https://kinti.github.io/svb/demo/>** — `<img src="*.svb">` funcionando hoy en cualquier navegador vía Service Worker.
+
+> English version in [README.md](README.md). Ante discrepancias, vale la versión inglesa (idioma normativo del proyecto).
+
+## Por qué existe
+
+SVG está parado — y eso es exactamente lo que deja margen de mejora:
+
+1. **El estándar está congelado.** SVG 2 murió como Candidate Recommendation abandonada y el grupo de trabajo del W3C está dormido. Los problemas estructurales de SVG no se arreglarán desde dentro; la mejora solo puede venir de fuera — igual que pasó con JPEG XL en raster.
+2. **SVG es texto, y el texto cuesta.** Cada coordenada gasta 3–8 bytes de ASCII, la misma plomería se repite en todos los archivos, y la compresión genérica de transporte (gzip/brotli) no entiende la estructura que comprime.
+3. **La accesibilidad es opcional en la práctica.** `<title>`, `<desc>`, ARIA dentro del SVG: casi nadie los pone, y nada en el formato permite verificarlos.
+
+SVB convierte cada problema en una vía de mejora concreta:
+
+- **Codificación binaria** — coordenadas en delta zigzag, cuantización de punto fijo, tabla de estilos internada. En las muestras de este repo, el binario crudo ya pesa **menos que el SVG comprimido con brotli**.
+- **Accesibilidad como chunk de primera clase** — chunk A11Y de gramática fija, anunciado por flag en la cabecera. Un validador puede exigirlo; un auditor puede certificarlo. En SVG son atributos opcionales que nadie pone; aquí el formato los puede exigir.
+- **Contenedor por chunks diseñado para evolucionar** — los decodificadores saltan los chunks que no conocen, así que el render progresivo (v0.2) y la animación declarativa sin SMIL (v0.2, reservada) se añaden sin romper nada.
+
+Precedentes, con honestidad: TinyVG demostró que un subconjunto binario de SVG llega al ~39% del tamaño — pero es para sistemas embebidos, sin runtime web, sin animación, sin accesibilidad. Lottie y Rive demuestran que "formato + runtime propio" gana adopción *sin* esperar a los navegadores — el polyfill Service Worker de este repo es exactamente ese camino. Y JPEG XL es el recordatorio de que ser técnicamente superior no basta: la adopción es política. SVB está diseñado para que incluso el escenario "no despega" deje valor: una spec rigurosa, un codec funcionando y una demo en vivo.
+
+## Números
+
+Muestras sin optimizar de este repo:
+
+| archivo | svg | +gzip | +brotli | **svb** | svb+gzip | svb+brotli | svb/svg |
+|---|---|---|---|---|---|---|---|
+| icon-pin.svg | 328 | 240 | 199 | **86** | 109 | 90 | **26%** |
+| illustration.svg | 946 | 513 | 462 | **303** | 326 | 307 | **32%** |
+| logo-star.svg | 380 | 275 | 230 | **123** | 146 | 127 | **32%** |
+
+El titular: **el SVB crudo es más pequeño que el SVG con brotli** en los tres casos — la ganancia viene del formato, no de la compresión de transporte.
+
+## Uso
+
+```bash
+node src/cli.js encode in.svg out.svb
+node src/cli.js decode out.svb back.svg
+node src/cli.js roundtrip in.svg      # encode→decode y vuelca el SVG decodificado
+node src/cli.js bench in.svg [more…]  # tabla svg/gzip/brotli/svb
+npm test                              # 19 tests (node:test, sin dependencias)
+```
+
+## Demo (polyfill Service Worker)
+
+En vivo: <https://kinti.github.io/svb/demo/>. En local: `python3 -m http.server 8923` desde la raíz y abrir `/demo/`.
+
+Un Service Worker intercepta las peticiones `*.svb`, las decodifica (DecompressionStream + el decoder del repo) y responde `image/svg+xml`, así que `<img src="icon.svb">` funciona en cualquier navegador actual. **El polyfill es la vía de entrada del formato** — la misma jugada "formato + runtime" que funcionó a Lottie y Rive.
+
+## Estructura del repo
+
+```
+SPEC.md              especificación byte a byte (v0.1, en inglés)
+SPEC.es.md           versión española de la especificación
+src/svb.js           primitivas: varuint/varint zigzag, punto fijo, colores
+src/xml.js           parser XML mínimo (subconjunto SVG)
+src/path.js          parser/normalizador de path data (→ M,L,C,Q,A,Z canónicos)
+src/encoder.js       SVG → SVB (hornea viewBox/transforms, interna estilos)
+src/decoder.js       SVB → SVG (salta chunks desconocidos: compatibilidad futura)
+src/browser-decode.js  decodificación asíncrona vía DecompressionStream
+src/cli.js           encode/decode/roundtrip/bench
+demo/                Service Worker + página de comparación
+test/                round-trips, fuzz varint, forward-compat, errores
+```
+
+## Limitaciones v0.1 (documentadas, no ocultas)
+
+- Subconjunto: `g`, `path`, `rect`, `circle`, `ellipse`, `line`, `polyline`, `polygon` con relleno sólido, trazo, opacidad, dash y transformadas. **Aún no**: gradientes, filtros, `<text>`, `<use>/<defs>`, `<image>`, CSS embebido, clip/mask (el encoder avisa y los salta/sustituye).
+- Solo atributos de presentación (sin herencia CSS de `<style>`).
+- Rotaciones de arco cuantizadas a grados enteros; coordenadas a `1/coord_scale` (por defecto 1/64 ≈ 0.016).
+
+## Hoja de ruta
+
+1. **Corpus real**: benchmarks honestos sobre cientos de SVGs de producción (pre- y post-svgo).
+2. **Rust → WASM**: puerto del hot-path; un binario para CLI y web.
+3. **Chunk ANIM (v0.2)**: keyframes declarativos sin SMIL.
+4. **Progresivo real**: orden de chunks de capa base a refino.
+5. **Validador + sello "SVB accesible"**: listo para auditoría (conexión con peritaje de accesibilidad, Ley 11/2023).
+
+## Ruta de publicación
+
+1. Este repo: spec versionada + implementación de referencia + tests *(hecho)*.
+2. Registro del tipo de medio `image/svb` en **IANA** (revisión de experto, RFC 6838) — gratuito y formal.
+3. Con tracción: **W3C Community Group** propio que publique CG Report (crear uno es gratis y abierto a individuos).
+4. Precedentes honestos: TinyVG, Lottie y Rive nunca fueron estándares de consorcio y siguen importando. La adopción decide; el consorcio, si llega, llega después.
+
+## Notas de seguridad
+
+Por diseño, SVB **no puede llevar scripts** — no existe chunk de script y el decoder de referencia solo emite geometría y texto de accesibilidad, lo que elimina el vector clásico de XSS de SVG (logos SVG subidos por usuarios). El decoder v0.1 aplica endurecimiento básico: magic obligatorio, verificación de límites de chunk, tope de longitud en varint. Sigue siendo una implementación de referencia joven: antes de uso en producción con ficheros de terceros, toca fuzzing y revisión de seguridad formal — el mismo camino que siguió PNG.
+
+## Licencia
+
+MIT — © 2026 Jesús Quintana
