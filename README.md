@@ -4,9 +4,11 @@
 
 **A binary vector-image format for the web** · v0.1 · specification + reference implementation.
 
+[![Tests](https://github.com/kinti/svb/actions/workflows/tests.yml/badge.svg)](https://github.com/kinti/svb/actions/workflows/tests.yml)
+
 **▶ Live demo: <https://kinti.github.io/svb/demo/>** — `<img src="*.svb">` working in today's browsers via a Service Worker. No plugin, no new browser engine.
 
-> También disponible en [español](README.es.md).
+> También disponible en [español](README.es.md) · Artículo del proyecto: <https://jquin.net/svb/>
 
 ## Why this exists
 
@@ -113,4 +115,4 @@ By design, SVB **cannot carry scripts** — there is no script chunk and the ref
 
 ## License
 
-MIT — © 2026 Jesús Quintana
+MIT — © 2026 Jesús Quintana · [jquin.net](https://jquin.net/)
