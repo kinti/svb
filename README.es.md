@@ -22,9 +22,21 @@ SVB convierte cada problema en una vía de mejora concreta:
 
 Precedentes, con honestidad: TinyVG demostró que un subconjunto binario de SVG llega al ~39% del tamaño — pero es para sistemas embebidos, sin runtime web, sin animación, sin accesibilidad. Lottie y Rive demuestran que "formato + runtime propio" gana adopción *sin* esperar a los navegadores — el polyfill Service Worker de este repo es exactamente ese camino. Y JPEG XL es el recordatorio de que ser técnicamente superior no basta: la adopción es política. SVB está diseñado para que incluso el escenario "no despega" deje valor: una spec rigurosa, un codec funcionando y una demo en vivo.
 
-## Números
+## Números — corpus real
 
-Muestras sin optimizar de este repo:
+**1.087 SVGs de producción** (Feather 287, Bootstrap Icons 400, Simple Icons 400 — semilla 42), cada uno optimizado antes con **svgo multipass**. Datos completos: **[página del benchmark](https://kinti.github.io/svb/benchmark/)** · `benchmark/run.mjs` lo reproduce.
+
+| métrica | resultado |
+|---|---|
+| Mediana svb / svg-optimizado | **×0,272** (media ×0,270) |
+| SVB crudo menor que svgo+brotli | **100% de los archivos** |
+| Mediana svb+brotli / svgo+brotli | ×0,541 |
+| Tamaño mediano | 467 B svg → **139 B svb** |
+| Codificaciones limpias | 1.087 / 1.087 (0 con pérdida, 0 excluidos, round-trip verificado) |
+
+Por fuente: Feather ×0,205 · Bootstrap ×0,279 · Simple Icons ×0,305. El peor archivo del corpus aún ahorra ~47%.
+
+## Números — muestras artesanales (`demo/samples/`)
 
 | archivo | svg | +gzip | +brotli | **svb** | svb+gzip | svb+brotli | svb/svg |
 |---|---|---|---|---|---|---|---|
@@ -32,7 +44,7 @@ Muestras sin optimizar de este repo:
 | illustration.svg | 946 | 513 | 462 | **303** | 326 | 307 | **32%** |
 | logo-star.svg | 380 | 275 | 230 | **123** | 146 | 127 | **32%** |
 
-El titular: **el SVB crudo es más pequeño que el SVG con brotli** en los tres casos — la ganancia viene del formato, no de la compresión de transporte.
+El titular: **el SVB crudo es más pequeño que el SVG con brotli** — la ganancia viene del formato, no de la compresión de transporte. (Ojo: el SVB es tan denso que gzip/brotli encima lo *agranda* — comprimir lo comprimido. Los servidores no deberían re-comprimir `.svb`.)
 
 ## Uso
 
@@ -63,6 +75,7 @@ src/decoder.js       SVB → SVG (salta chunks desconocidos: compatibilidad futu
 src/browser-decode.js  decodificación asíncrona vía DecompressionStream
 src/cli.js           encode/decode/roundtrip/bench
 demo/                Service Worker + página de comparación
+benchmark/           benchmark con corpus real (run.mjs, resultados, página en vivo)
 test/                round-trips, fuzz varint, forward-compat, errores
 ```
 
@@ -74,11 +87,12 @@ test/                round-trips, fuzz varint, forward-compat, errores
 
 ## Hoja de ruta
 
-1. **Corpus real**: benchmarks honestos sobre cientos de SVGs de producción (pre- y post-svgo).
+1. ~~**Corpus real**~~ *(hecho — [benchmark](https://kinti.github.io/svb/benchmark/): 1.087 archivos, mediana ×0,272)*. Ampliarlo: fuentes con ilustraciones y gradientes para priorizar la v0.2.
 2. **Rust → WASM**: puerto del hot-path; un binario para CLI y web.
 3. **Chunk ANIM (v0.2)**: keyframes declarativos sin SMIL.
 4. **Progresivo real**: orden de chunks de capa base a refino.
 5. **Validador + sello "SVB accesible"**: listo para auditoría (conexión con peritaje de accesibilidad, Ley 11/2023).
+6. **Fuzzing + revisión de seguridad**: requerido antes de uso en producción con ficheros de terceros.
 
 ## Ruta de publicación
 

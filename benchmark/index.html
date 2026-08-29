@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SVB real-world benchmark — 1,087 production SVGs</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font: 16px/1.5 system-ui, sans-serif; max-width: 1020px; margin: 2rem auto; padding: 0 1rem; }
+  h1 { font-size: 1.4rem; } h2 { font-size: 1.1rem; margin-top: 2.2rem; }
+  .cards { display: flex; gap: 1rem; flex-wrap: wrap; }
+  .card { border: 1px solid #8884; border-radius: 10px; padding: .8rem 1.2rem; min-width: 170px; }
+  .card b { font-size: 1.7rem; display: block; font-variant-numeric: tabular-nums; }
+  table { border-collapse: collapse; }
+  td, th { border: 1px solid #8884; padding: 4px 10px; text-align: right; font-variant-numeric: tabular-nums; }
+  th:first-child, td:first-child { text-align: left; }
+  .bar { background: #3584e4; height: 1.1rem; min-width: 2px; display: inline-block; vertical-align: middle; }
+  .row { display: flex; align-items: center; gap: .6rem; margin: 2px 0; }
+  .row span:first-child { width: 7.5rem; }
+  .row em { font-style: normal; color: #888; font-size: .85rem; }
+  input { font: inherit; padding: 4px 8px; }
+  code { background: #8882; padding: 1px 5px; border-radius: 4px; }
+  .muted { color: #888; }
+</style>
+</head>
+<body>
+<h1>SVB real-world benchmark</h1>
+<p>1,087 production SVGs (Feather Icons, Bootstrap Icons, Simple Icons — sampled with seed 42),
+each one optimized with <strong>svgo multipass</strong> first, then encoded with SVB v0.1.
+Comparisons are against what a web developer would actually ship, not raw files. Run <code>benchmark/run.mjs</code> to reproduce.</p>
+<div class="cards" id="cards"></div>
+
+<h2>Per source</h2>
+<table id="sources"><thead><tr><th>source</th><th>n</th><th>median svb/svg</th><th>svb &lt; svg+brotli</th><th>median svb+br / svg+br</th></tr></thead><tbody></tbody></table>
+
+<h2>Ratio distribution (svb / svg-optimized)</h2>
+<div id="hist"></div>
+
+<h2>Best and worst 10</h2>
+<div style="display:flex; gap:3rem; flex-wrap:wrap">
+  <div><h3 style="font-size:1rem">Best (smallest svb/svg)</h3><table id="best"></table></div>
+  <div><h3 style="font-size:1rem">Worst (still ≤ ×0.53)</h3><table id="worst"></table></div>
+</div>
+
+<h2>All files</h2>
+<p><input id="q" placeholder="filter by name…" autocomplete="off"> <span class="muted" id="count"></span></p>
+<table id="all"><thead><tr><th>file</th><th>source</th><th>svg (svgo)</th><th>svg+br</th><th>svb</th><th>svb+br</th><th>svb/svg</th></tr></thead><tbody></tbody></table>
+
+<p class="muted">Methodology: svgo multipass · brotli quality 11 · gzip level 9 · SVB with internal DEFLATE when it helps ·
+clean round-trip verified per file · <span id="meta"></span> ·
+<a href="../demo/">← live demo</a> · <a href="https://github.com/kinti/svb">repo</a></p>
+
+<script type="module">
+  const { summary, files } = await (await fetch('results.json')).json();
+  const o = summary.overall;
+  const pct = (x) => (100 * x).toFixed(1).replace(/\.0$/, '') + '%';
+
+  document.getElementById('cards').innerHTML = [
+    ['Median svb / svg', '×' + o.medianRatio],
+    ['svb < svg+brotli', o.pctBelowRawBrotli + '%'],
+    ['Median svb+br / svg+br', '×' + o.medianSvbBrOverSvgBr],
+    ['Median bytes', o.medianSvb + ' vs ' + o.medianSvgMin],
+    ['Corpus', `${summary.clean} clean / ${summary.collected}`],
+  ].map(([l, v]) => `<div class="card"><b>${v}</b>${l}</div>`).join('');
+
+  document.getElementById('meta').textContent =
+    `excluded: ${summary.excluded['svgo-fail']} svgo-fail, ${summary.excluded['svb-fail']} svb-fail · lossy: ${summary.lossy} · sources: ${Object.entries(summary.versions).map(([k,v])=>k+' '+v).join(', ')}`;
+
+  document.querySelector('#sources tbody').innerHTML = Object.entries(summary.bySource).map(([id, s]) =>
+    `<tr><td>${s.label}</td><td>${s.n}</td><td>×${s.medianRatio}</td><td>${s.pctBelowRawBrotli}%</td><td>×${s.medianSvbBrOverSvgBr}</td></tr>`
+  ).join('');
+
+  const clean = files.filter((f) => f.status === 'clean');
+  const buckets = [[0,.15],[.15,.20],[.20,.25],[.25,.30],[.30,.35],[.35,.40],[.40,.50],[.50,Infinity]];
+  const counts = buckets.map(([a,b]) => clean.filter((f) => { const r = f.svb / f.svgMin; return r >= a && r < b; }).length);
+  const max = Math.max(...counts);
+  document.getElementById('hist').innerHTML = buckets.map(([a,b], i) =>
+    `<div class="row"><span>${a===0?'<0.15':b===Infinity?'≥0.50':`≥${a.toFixed(2)} <${b.toFixed(2)}`}</span>` +
+    `<span class="bar" style="width:${Math.round(420 * counts[i] / max)}px"></span><em>${counts[i]} (${pct(counts[i]/clean.length)})</em></div>`
+  ).join('');
+
+  const rows = (list) => list.map((f) =>
+    `<tr><td>${f.name}</td><td>${f.source}</td><td>${f.svgMin}</td><td>${f.svgMinBr}</td><td><b>${f.svb}</b></td><td>${f.svbBr}</td><td>×${(f.svb/f.svgMin).toFixed(2)}</td></tr>`).join('');
+  const byRatio = (a, b) => a.svb / a.svgMin - b.svb / b.svgMin;
+  const sorted = [...clean].sort(byRatio);
+  document.getElementById('best').innerHTML = '<tr><th>file</th><th>svb/svg</th></tr>' +
+    sorted.slice(0, 10).map((f) => `<tr><td>${f.name} <em>(${f.source})</em></td><td>×${(f.svb/f.svgMin).toFixed(3)}</td></tr>`).join('');
+  document.getElementById('worst').innerHTML = '<tr><th>file</th><th>svb/svg</th></tr>' +
+    sorted.slice(-10).reverse().map((f) => `<tr><td>${f.name} <em>(${f.source})</em></td><td>×${(f.svb/f.svgMin).toFixed(2)}</td></tr>`).join('');
+
+  const tbody = document.querySelector('#all tbody');
+  const render = (list) => {
+    tbody.innerHTML = rows(list);
+    document.getElementById('count').textContent = `${list.length} / ${clean.length} files`;
+  };
+  render(clean);
+  document.getElementById('q').addEventListener('input', (e) => {
+    const q = e.target.value.toLowerCase();
+    render(q ? clean.filter((f) => f.name.includes(q) || f.source.includes(q)) : clean);
+  });
+</script>
+</body>
+</html>

@@ -51,6 +51,7 @@ export function encode(svgString, opts = {}) {
   const inheritableKeys = ['fill', 'fillOpacity', 'stroke', 'strokeOpacity', 'strokeWidth', 'lineCap', 'lineJoin', 'dash', 'evenodd'];
   const rootStyle = { fill: '#000000', fillOpacity: 1, stroke: null, strokeOpacity: 1, strokeWidth: 1, lineCap: 'butt', lineJoin: 'miter', dash: null, evenodd: false };
   // presentation attributes on the root <svg> (common in icon SVGs) are inherited
+  if (svg.attrs.style) warnings.push('style attribute ignored (v0.1: presentation attributes only)');
   for (const [k, v] of Object.entries(readPresentationAttrs(svg.attrs, warnings))) {
     if (v !== undefined) rootStyle[k] = v;
   }
@@ -63,6 +64,7 @@ export function encode(svgString, opts = {}) {
       if (tag === 'title' || tag === 'desc') continue; // handled per-context
       if (tag === 'g' || tag === 'a' || tag === 'switch') {
         // container: compose transform, inherit style, recurse
+        if (node.attrs.style) warnings.push('style attribute ignored (v0.1: presentation attributes only)');
         const own = readPresentationAttrs(node.attrs, warnings);
         const style = { ...inheritedStyle };
         for (const k of inheritableKeys) if (own[k] !== undefined) style[k] = own[k];
@@ -88,6 +90,7 @@ export function encode(svgString, opts = {}) {
       if (node.attrs.mask || node.attrs['clip-path'] || node.attrs.filter) {
         warnings.push(`<${tag}> mask/clip/filter ignored`);
       }
+      if (node.attrs.style) warnings.push('style attribute ignored (v0.1: presentation attributes only)');
 
       const own = readPresentationAttrs(node.attrs, warnings);
       const style = { ...inheritedStyle };
