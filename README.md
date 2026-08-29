@@ -5,7 +5,7 @@
 **A binary vector-image format for the web** · v0.1 · specification + reference implementation.
 
 [![Tests](https://github.com/kinti/svb/actions/workflows/tests.yml/badge.svg)](https://github.com/kinti/svb/actions/workflows/tests.yml)
-[![CodeQL](https://github.com/kinti/svb/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/kinti/svb/security/code-scanning)
+[![CodeQL](https://img.shields.io/github/actions/workflow/status/kinti/svb/codeql.yml?label=CodeQL)](https://github.com/kinti/svb/security/code-scanning)
 [![Release](https://img.shields.io/github/v/release/kinti/svb)](https://github.com/kinti/svb/releases)
 [![License](https://img.shields.io/github/license/kinti/svb)](LICENSE)
 ![Node](https://img.shields.io/badge/node-%E2%89%A518-brightgreen)
