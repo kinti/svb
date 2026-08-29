@@ -6,14 +6,14 @@
 //   node src/cli.js bench in.svg [more.svg ...]
 
 import { readFileSync, writeFileSync } from 'node:fs';
-import { basename, extname, join } from 'node:path';
+import { basename } from 'node:path';
 import zlib from 'node:zlib';
 import { encode } from './encoder.js';
 import { decode } from './decoder.js';
-import { toHex } from './svb.js';
+import { MAX_DECOMPRESSED } from './svb.js';
 
 const DEFLATE = (u8) => zlib.deflateRawSync(u8, { level: 9 });
-const INFLATE = (u8) => zlib.inflateRawSync(u8);
+const INFLATE = (u8) => zlib.inflateRawSync(u8, { maxOutputLength: MAX_DECOMPRESSED });
 
 const [, , cmd, ...args] = process.argv;
 
@@ -33,7 +33,7 @@ try {
 }
 
 function usage() {
-  return `SVB v0.1 — Scalable Vector Binary
+  return `SVB v0.1.1 — Scalable Vector Binary
 usage:
   svb encode <in.svg> <out.svb> [--scale 64] [--generator "app"]
   svb decode <in.svb> <out.svg>

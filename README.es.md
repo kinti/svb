@@ -111,7 +111,11 @@ test/                round-trips, fuzz varint, forward-compat, errores
 
 ## Notas de seguridad
 
-Por diseño, SVB **no puede llevar scripts** — no existe chunk de script y el decoder de referencia solo emite geometría y texto de accesibilidad, lo que elimina el vector clásico de XSS de SVG (logos SVG subidos por usuarios). El decoder v0.1 aplica endurecimiento básico: magic obligatorio, verificación de límites de chunk, tope de longitud en varint. Sigue siendo una implementación de referencia joven: antes de uso en producción con ficheros de terceros, toca fuzzing y revisión de seguridad formal — el mismo camino que siguió PNG.
+Por diseño, SVB **no puede llevar scripts** — no existe chunk de script y el decoder de referencia solo emite geometría y texto de accesibilidad, lo que elimina el vector clásico de XSS de SVG (logos SVG subidos por usuarios).
+
+**Endurecimiento v0.1.1** (auditoría 2026-08-30, con los proof-of-concept conservados en `test/security.test.js`): un archivo hostil de ~20 bytes que declaraba 134 millones de comandos de path agotaba 4 GB de heap (ahora se rechaza en microsegundos por límites de contadores + guardas EOF); una bomba comprimida de 199 KB se expandía sin tope a 200 MB de RAM (ahora limitada a 64 MB, abortando en pleno stream); el parsing de listas de atributos adversarias ya no es cuadrático. Las reglas son normativas en [SPEC §12](SPEC.md).
+
+Antes de uso en producción con ficheros de terceros sigue recomendado: fuzzing formal más allá de la suite de regresión (radamsa o similar).
 
 ## Licencia
 

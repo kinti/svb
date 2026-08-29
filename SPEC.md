@@ -171,6 +171,18 @@ Planned design (non-normative in v0.1): keyframe track(s) per element or propert
 
 A conforming **encoder** emits a valid header, at least one GEOM chunk, chunks in ascending tag order, and no bytes outside chunks. A conforming **decoder** accepts any v1 file, ignores unknown chunks, and renders the GEOM+STYLE subset; A11Y support is mandatory for the "accessible SVB" seal.
 
-## 12. History
+## 12. Security
 
+The format cannot carry executable code: there is no executable chunk type, and conforming decoders emit geometry and escaped text only.
+
+Hardening rules, **normative for implementations**:
+
+- Readers MUST fail on any read past the end of the buffer. Silent zero-fill on out-of-range reads is non-conforming.
+- A declared count or size (chunk sizes, element counts, path command counts, array lengths) MUST be rejected when it exceeds the bytes remaining in the file. Hostile files must fail in bounded time, not be allocated into memory.
+- Implementations SHOULD cap the decompressed payload size (recommended: 64 MB) and SHOULD cap accepted encoder input size.
+- Rationale: without these rules, a ~20-byte file declaring 134 million path commands exhausts gigabytes of heap; with them, it is rejected in microseconds.
+
+## 13. History
+
+- **v0.1.1 (2026-08-30)** — security hardening release: EOF guards on all readers, declared-count bounds, decompression output cap, encoder input cap, quadratic attr parsing fixed; §12 added (normative). Format unchanged: files produced by v0.1 encoders remain valid, version byte stays `1`.
 - **v0.1 (2026-08-29)** — first public draft: header, chunk container, STYLE/GEOM/A11Y/META, geometric subset, ANIM reserved.

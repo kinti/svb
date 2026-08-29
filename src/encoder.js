@@ -7,7 +7,7 @@
 
 import {
   MAGIC, VERSION, FLAG, CHUNK, SHAPE, CMD,
-  ByteWriter, parseColor, toHex, toFixed,
+  ByteWriter, parseColor, toHex, toFixed, MAX_INPUT,
 } from './svb.js';
 import { parseXml } from './xml.js';
 import { parsePathData } from './path.js';
@@ -20,6 +20,9 @@ const SKIP_TAGS = new Set([
 const UNSUPPORTED_WARN = new Set(['use', 'text', 'image', 'tspan', 'textPath', 'foreignObject']);
 
 export function encode(svgString, opts = {}) {
+  if (typeof svgString !== 'string' || svgString.length > MAX_INPUT) {
+    throw new RangeError(`input too large (max ${MAX_INPUT} bytes)`);
+  }
   const scale = opts.scale ?? 64;
   const warnings = [];
   const doc = parseXml(svgString);

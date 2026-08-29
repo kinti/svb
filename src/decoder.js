@@ -8,6 +8,13 @@
 import { MAGIC, VERSION, FLAG, CHUNK, SHAPE, ByteReader } from './svb.js';
 import { serializePathData } from './path.js';
 
+// SPEC §12: a declared count can never exceed the bytes available to hold it.
+function ensureAvailable(r, n, what) {
+  if (n > r.remaining) {
+    throw new Error(`${what} (${n}) exceeds the ${r.remaining} remaining bytes — rejecting hostile/corrupt file`);
+  }
+}
+
 export function decode(bytes, opts = {}) {
   const r = new ByteReader(bytes);
   for (let i = 0; i < 3; i++) {
@@ -59,6 +66,7 @@ export function decode(bytes, opts = {}) {
 
 function readStyleChunk(r, table) {
   const count = r.varuint();
+  ensureAvailable(r, count, 'STYLE count');
   for (let i = 0; i < count; i++) {
     table.push(readStyleEntry(r));
   }
@@ -89,6 +97,7 @@ function readStyleEntry(r) {
   }
   if (hasDash) {
     const n = r.varuint();
+    ensureAvailable(r, n, 'dash count');
     style.dash = [];
     for (let d = 0; d < n; d++) style.dash.push(r.varuint()); // fixed units
   }
@@ -101,6 +110,7 @@ function readRgb(r) {
 
 function readGeomChunk(r, elements, scale) {
   const count = r.varuint();
+  ensureAvailable(r, count, 'GEOM count');
   for (let i = 0; i < count; i++) {
     const eb = r.u8();
     const type = eb & 0x0f;
@@ -138,6 +148,7 @@ function readShape(r, type, scale) {
     case SHAPE.POLYLINE:
     case SHAPE.POLYGON: {
       const n = r.varuint();
+      ensureAvailable(r, n, 'polyline count');
       let px = sv(), py = sv();
       const pts = [[px, py]];
       for (let i = 1; i < n; i++) {
@@ -149,6 +160,7 @@ function readShape(r, type, scale) {
     }
     case SHAPE.PATH: {
       const cmdCount = r.varuint();
+      ensureAvailable(r, cmdCount, 'path command count');
       const segs = [];
       let penX = 0, penY = 0, subStartX = 0, subStartY = 0, firstPoint = true;
       for (let i = 0; i < cmdCount; i++) {
@@ -194,6 +206,7 @@ function readA11yChunk(r) {
   const desc = r.lenpfxUtf8();
   const labels = [];
   const count = r.varuint();
+  ensureAvailable(r, count, 'A11Y label count');
   for (let i = 0; i < count; i++) {
     const index = r.varuint();
     const n = r.lenpfxUtf8();

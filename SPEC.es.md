@@ -169,8 +169,20 @@ Diseño previsto (no normativo en v0.1): pista(s) de keyframes por elemento o pr
 
 ## 11. Conformidad
 
-Un **codificador conforme** emite cabecera válida, al menos un chunk GEOM, chunks en orden creciente de tag y ningún byte fuera de chunk. Un **decodificador conforme** acepta cualquier archivo v1, ignora chunks desconocidos y renderiza el subconjunto GEOM+STYLE; el soporte de A11Y es obligatorio para el sello "SVB accesible".
+Un **codificador** conforme emite cabecera válida, al menos un chunk GEOM, chunks en orden creciente de tag y ningún byte fuera de chunk. Un **decodificador** conforme acepta cualquier archivo v1, ignora chunks desconocidos y renderiza el subconjunto GEOM+STYLE; el soporte de A11Y es obligatorio para el sello "SVB accesible".
 
-## 12. Historial
+## 12. Seguridad
 
+El formato no puede llevar código ejecutable: no existe tipo de chunk ejecutable y los decodificadores conformes emiten solo geometría y texto escapado.
+
+Reglas de endurecimiento, **normativas para las implementaciones**:
+
+- Los lectores DEBEN fallar ante cualquier lectura más allá del fin del buffer. El relleno silencioso a cero fuera de rago no es conforme.
+- Todo contador o tamaño declarado (tamaños de chunk, conteos de elementos, conteos de comandos de path, longitudes de arrays) DEBE rechazarse cuando exceda los bytes restantes del archivo. Los archivos hostiles deben fallar en tiempo acotado, no asignarse en memoria.
+- Las implementaciones DEBERÍAN limitar el tamaño del payload descomprimido (recomendado: 64 MB) y el tamaño de entrada aceptado por el codificador.
+- Justificación: sin estas reglas, un archivo de ~20 bytes que declara 134 millones de comandos de path agota gigabytes de heap; con ellas, se rechaza en microsegundos.
+
+## 13. Historial
+
+- **v0.1.1 (2026-08-30)** — release de endurecimiento de seguridad: guardas EOF en todos los lectores, límites en contadores declarados, tope de descompresión, tope de entrada del codificador, parsing de atributos cuadrático corregido; se añade §12 (normativa). El formato no cambia: los archivos producidos por codificadores v0.1 siguen siendo válidos y el byte de versión sigue siendo `1`.
 - **v0.1 (2026-08-29)** — primer borrador público: cabecera, contenedor por chunks, STYLE/GEOM/A11Y/META, subconjunto geométrico, ANIM reservado.

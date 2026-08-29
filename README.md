@@ -111,7 +111,11 @@ test/                round-trips, varint fuzz, forward-compat, error handling
 
 ## Security notes
 
-By design, SVB **cannot carry scripts** — there is no script chunk and the reference decoder only emits geometry and accessibility text, which removes SVG's classic XSS vector (user-uploaded SVG logos). The v0.1 decoder enforces basic hardening: mandatory magic bytes, chunk-bounds checks, varint length caps. It is still a young reference implementation: before any production use with untrusted files, it needs fuzzing and a formal security review — the same path PNG went through.
+By design, SVB **cannot carry scripts** — there is no script chunk and the reference decoder only emits geometry and accessibility text, which removes SVG's classic XSS vector (user-uploaded SVG logos).
+
+**v0.1.1 hardening** (audited 2026-08-30, with proof-of-concept tests kept in `test/security.test.js`): a ~20-byte hostile file that declared 134 million path commands exhausted 4 GB of heap (now rejected in microseconds by counter bounds + EOF guards); a 199 KB compressed bomb expanded unbounded to 200 MB of RAM (now capped at 64 MB, aborting mid-stream); adversarial SVG attribute lists no longer trigger quadratic parsing. The rules are normative in [SPEC §12](SPEC.md).
+
+Still recommended before production use with untrusted files: formal fuzzing beyond the regression suite (radamsa or similar).
 
 ## License
 

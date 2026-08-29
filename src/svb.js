@@ -11,6 +11,11 @@ export const FLAG = {
   HAS_STYLE: 1 << 3,
 };
 
+// Security limits (see SPEC §12): implementations SHOULD refuse inputs and
+// decompressed payloads beyond these bounds.
+export const MAX_INPUT = 10 * 1024 * 1024;        // SVG accepted by the encoder
+export const MAX_DECOMPRESSED = 64 * 1024 * 1024; // SVB payload after DEFLATE
+
 export const CHUNK = {
   STYLE: 0x01,
   GEOM: 0x02,
@@ -39,6 +44,7 @@ export function writeVarUint(bytes, n) {
 export function readVarUint(buf, pos) {
   let result = 0, shift = 0;
   for (;;) {
+    if (pos >= buf.length) throw new RangeError('unexpected end of buffer');
     const b = buf[pos++];
     result += (b & 0x7f) * 2 ** shift;
     if ((b & 0x80) === 0) break;
@@ -95,8 +101,16 @@ export class ByteReader {
     this.pos = 0;
     this.dec = new TextDecoder();
   }
-  u8() { return this.buf[this.pos++]; }
-  bytes(n) { const s = this.buf.subarray(this.pos, this.pos + n); this.pos += n; return s; }
+  u8() {
+    if (this.pos >= this.buf.length) throw new RangeError('unexpected end of buffer');
+    return this.buf[this.pos++];
+  }
+  bytes(n) {
+    if (this.pos + n > this.buf.length) throw new RangeError('unexpected end of buffer');
+    const s = this.buf.subarray(this.pos, this.pos + n);
+    this.pos += n;
+    return s;
+  }
   varuint() { const [v, p] = readVarUint(this.buf, this.pos); this.pos = p; return v; }
   varint() { const [v, p] = readVarInt(this.buf, this.pos); this.pos = p; return v; }
   lenpfxUtf8() { const n = this.varuint(); return this.dec.decode(this.bytes(n)); }

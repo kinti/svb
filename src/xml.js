@@ -83,12 +83,18 @@ function appendText(node, s, raw = false) {
   node.text += (node.text ? ' ' : '') + t.replace(/\s+/g, ' ').trim();
 }
 
+// Sticky regexes run against the original string (no repeated substring copies,
+// which made adversarial attribute lists quadratic).
+const TAG_NAME_RE = /[\w:.-]+/y;
+const ATTR_RE = /([\w:.-]+)\s*=\s*(?:"([^"]*)"|'([^']*)')/y;
+
 function parseTagStart(src, start, node, fail) {
   let i = start + 1;
-  const tagMatch = /^[\w:.-]+/.exec(src.slice(i));
+  TAG_NAME_RE.lastIndex = i;
+  const tagMatch = TAG_NAME_RE.exec(src);
   if (!tagMatch) fail('bad tag name');
   node.tag = tagMatch[0];
-  i += tagMatch[0].length;
+  i = TAG_NAME_RE.lastIndex;
 
   for (;;) {
     while (i < src.length && /\s/.test(src[i])) i++;
@@ -96,11 +102,11 @@ function parseTagStart(src, start, node, fail) {
     const c = src[i];
     if (c === '>') return i + 1;
     if (c === '/' && src[i + 1] === '>') { node.selfClosing = true; return i + 2; }
-    const attrMatch = /^([\w:.-]+)\s*=\s*("([^"]*)"|'([^']*)')/.exec(src.slice(i));
+    ATTR_RE.lastIndex = i;
+    const attrMatch = ATTR_RE.exec(src);
     if (!attrMatch) fail(`bad attribute near "${src.slice(i, i + 20)}"`);
-    const value = attrMatch[3] ?? attrMatch[4] ?? '';
-    node.attrs[attrMatch[1]] = decodeEntities(value);
-    i += attrMatch[0].length;
+    node.attrs[attrMatch[1]] = decodeEntities(attrMatch[2] ?? attrMatch[3] ?? '');
+    i = ATTR_RE.lastIndex;
   }
 }
 
