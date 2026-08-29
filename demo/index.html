@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SVB v0.1 — demo con Service Worker</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font: 16px/1.5 system-ui, sans-serif; max-width: 960px; margin: 2rem auto; padding: 0 1rem; }
+  h1 { font-size: 1.4rem; } h2 { font-size: 1.1rem; margin-top: 2rem; }
+  .row { display: flex; gap: 2rem; flex-wrap: wrap; align-items: center; }
+  figure { margin: 0; text-align: center; }
+  .checker { background: conic-gradient(#0002 0 25%, #0000 0 50%) 0 0/16px 16px; border: 1px solid #8884; }
+  img.sv { width: 128px; height: 128px; display: block; }
+  table { border-collapse: collapse; }
+  td, th { border: 1px solid #8884; padding: 4px 10px; text-align: right; font-variant-numeric: tabular-nums; }
+  th:first-child, td:first-child { text-align: left; }
+  .status { color: #b00; } .ok { color: #070; }
+  code { background: #8882; padding: 1px 5px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<h1>SVB — Scalable Vector Binary <small>v0.1</small></h1>
+<p>Los <code>&lt;img src="*.svb"&gt;</code> de abajo los sirve un <strong>Service Worker</strong>: intercepta la petición,
+decodifica el binario y responde SVG normal. Sin plugin y sin navegador especial — es la vía de entrada del formato.</p>
+
+<h2>Original vs .svb</h2>
+<div class="row">
+  <figure><div class="checker"><img class="sv" src="samples/icon-pin.svg" alt="icono map-pin en SVG"></div><figcaption>icon-pin.svg</figcaption></figure>
+  <figure><div class="checker"><img class="sv" id="img-icon-pin" alt="icono map-pin en SVB"></div><figcaption>icon-pin.svb <span id="st-icon-pin"></span></figcaption></figure>
+  <figure><div class="checker"><img class="sv" id="img-illustration" alt="ilustración en SVB"></div><figcaption>illustration.svb <span id="st-illustration"></span></figcaption></figure>
+  <figure><div class="checker"><img class="sv" id="img-logo-star" alt="logotipo estrella en SVB"></div><figcaption>logo-star.svb <span id="st-logo-star"></span></figcaption></figure>
+</div>
+
+<h2>Tamaños</h2>
+<table id="sizes"><thead><tr><th>archivo</th><th>svg</th><th>.svb</th><th>ahorro</th></tr></thead><tbody></tbody></table>
+
+<h2>Accesibilidad embebida</h2>
+<p>El chunk A11Y viaja dentro del binario. La cabecera que decodifica el Service Worker para <code>icon-pin.svb</code>:</p>
+<pre id="a11y"></pre>
+
+<script type="module">
+  const NAMES = ['icon-pin', 'illustration', 'logo-star'];
+  const status = (name, txt, ok) => {
+    const el = document.getElementById('st-' + name);
+    el.textContent = txt;
+    el.className = ok ? 'ok' : 'status';
+  };
+
+  await navigator.serviceWorker.register('./sw.js', { type: 'module' });
+  // esperar a que el SW controle ESTA página (primer install: activa con clients.claim)
+  if (!navigator.serviceWorker.controller) {
+    await new Promise((res) =>
+      navigator.serviceWorker.addEventListener('controllerchange', res, { once: true }));
+  }
+
+  for (const name of NAMES) {
+    const img = document.getElementById('img-' + name);
+    img.src = `samples/${name}.svb`;
+    img.onload = () => status(name, ' ✓', true);
+    img.onerror = () => status(name, ' ✗', false);
+  }
+
+  const fetchSize = async (url) => {
+    const res = await fetch(url);
+    const cl = res.headers.get('Content-Length');
+    return cl ? Number(cl) : (await res.blob()).size;
+  };
+
+  const tbody = document.querySelector('#sizes tbody');
+  for (const name of NAMES) {
+    const svgSize = await fetchSize(`samples/${name}.svg`);
+    const svbSize = await fetchSize(`samples/${name}.svb?raw=1`); // binario real, sin decodificar
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${name}</td><td>${svgSize}</td><td>${svbSize}</td><td>${(100 - 100 * svbSize / svgSize).toFixed(1)}%</td>`;
+    tbody.append(tr);
+  }
+
+  // el SW ya devuelve SVG decodificado: la vista previa del A11Y es la respuesta misma
+  const decodedHead = await (await fetch('samples/icon-pin.svb')).text();
+  document.getElementById('a11y').textContent = decodedHead.slice(0, decodedHead.indexOf('>') + 1);
+</script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+{
+  "name": "svb-format",
+  "version": "0.1.0",
+  "description": "SVB — Scalable Vector Binary: binary vector image format for the web (v0.1)",
+  "type": "module",
+  "license": "MIT",
+  "bin": {
+    "svb": "./src/cli.js"
+  },
+  "scripts": {
+    "test": "node --test test/",
+    "demo": "node -e \"import('node:http').then(()=>{})\" && npx --yes serve demo -l 8923"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

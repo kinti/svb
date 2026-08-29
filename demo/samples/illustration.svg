@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300">
+  <title>Rías Baixas: paisaje con mar y montes</title>
+  <desc>Ilustración plana de un paisaje gallego con sol, montes y mar.</desc>
+  <rect x="0" y="0" width="400" height="300" fill="#cfe8ff"/>
+  <g transform="translate(0,-10)">
+    <circle cx="320" cy="70" r="36" fill="#ffd23f"/>
+  </g>
+  <g transform="translate(60,0) scale(1.1)">
+    <polygon points="0,220 90,120 180,220" fill="#4c7a3f"/>
+    <polygon points="120,220 210,90 300,220" fill="#3c5e33"/>
+  </g>
+  <rect x="0" y="215" width="400" height="85" fill="#2d7fa8"/>
+  <path d="M0 235 q 50 -12 100 0 t 100 0 t 100 0 t 100 0 V 300 H 0 Z" fill="#3f97c4" fill-opacity="0.8"/>
+  <path d="M40 260 c 20 -8 40 8 60 0" fill="none" stroke="#e6f4fb" stroke-width="3" stroke-linecap="round" stroke-dasharray="8 6"/>
+  <g transform="translate(340 240) rotate(-12)">
+    <path d="M0 0 L 46 -8 L 40 6 Z" fill="#f5f0e6"/>
+  </g>
+</svg>
