@@ -4,10 +4,21 @@
 **Why this document exists**: the v0.1 implementation preceded a written theoretical model — an external review correctly identified that as the root process failure. This document is that missing phase, executed as design (not as patch), so that all future work (v0.2 gradients, ANIM, the Rust port) starts from invariants instead of from inherited patches. History: v0.1.0 shipped without INV-2/3/5 and was vulnerable (see findings ledger).
 
 > **Rev. 4 (2026-08-30)**: algebraic specification added (§3, TAD layer: sorts, operations, pre/postconditions) following external review. Finding **F-11** accepted into the ledger with precise scoping: the *encoder's* XML walker recurses over nesting (RangeError, fail-closed — verified, not a browser crash); the *decoder* is immune by design — the binary grammar contains no recursive productions and call depth is constant (proof in INV-11). No code changed (review freeze); fix planned.
+> **Rev. 5 (2026-08-30)**: machine classification added (§1.1) following external review: the container's minimal abstract machine is **not** a pushdown automaton — length prefixes and fixed arities reduce the language to a finite automaton with a grammar-bounded number of counters (O(1) memory, independent of input nesting). Decode formalized as a transition function over registers (§3.1). F-11 disposition updated: the fix adopts the reviewer's Stack-TAD prescription for the encoder (explicit, bounded stack instead of the JS call stack).
 
 ## 1. The format as a formal system
 
 SVB is a **context-free** byte grammar with length-prefixed, skippable chunks. Everything a decoder needs to accept or reject a file is decidable from the bytes seen so far; there is no backtracking, no context-sensitive syntax, and no unbounded lookahead.
+
+### 1.1 Machine classification (why not a pushdown)
+
+Context-free is the *upper bound* of this grammar's complexity, not its class. A pushdown automaton is the minimal machine for languages with **input-driven unbounded nesting** (balanced delimiters, aⁿbⁿ) — which is the shape of the SVG *source*, where our XML parser indeed runs an explicit stack (`xml.js`, `parseXml`). SVB's binary grammar deliberately **eliminates** that shape:
+
+1. chunk boundaries are explicit (declared size), not bracketed — no matching to remember;
+2. the six path commands have fixed arities — no command history to replay;
+3. no production is recursive — counting nesting is bounded by the grammar itself (at most two live counters: element index inside GEOM, command index inside a path; points consume within a command).
+
+Therefore the minimal abstract machine for the decoder is a **finite automaton with a fixed number of data registers and counters** — memory O(1), independent of file size and nesting. The depth-limit question is dissolved, not solved: there is no stack whose depth a hostile file could drive. The pushdown where a stack *is* the right model (SVG/XML ingestion, i.e. `parseXml` + the encoder walker) is exactly where finding F-11 lives, and its fix adopts the reviewer's Stack-TAD prescription (§5).
 
 **Alphabet**
 
@@ -19,7 +30,7 @@ SVB is a **context-free** byte grammar with length-prefixed, skippable chunks. E
 | fixed coordinate | varuint or varint ÷ coord_scale | coord_scale ≥ 1 |
 | color | RGB24 [+ α8] | |
 
-**Grammar**: the ABNF in the audit brief §4 (to be merged into SPEC as appendix). Context-free by construction: the six canonical path commands have fixed arities; SVG constructs that require a state machine (S/T reflection, H/V, implicit command repetition) are normalized away by the encoder. The ABNF contains **no recursive productions** — verified: no non-terminal appears in its own expansion chain.
+**Grammar**: the ABNF in the audit brief §4 (to be merged into SPEC as appendix). Context-free by construction — and, per §1.1, *regular-plus-counters* in practice: the six canonical path commands have fixed arities; SVG constructs that require a state machine (S/T reflection, H/V, implicit command repetition) are normalized away by the encoder. The ABNF contains **no recursive productions** — verified: no non-terminal appears in its own expansion chain.
 
 **Chunk topology**: ascending tag order (STYLE → GEOM → A11Y → META). All cross-references point backward (GEOM indexes STYLE; A11Y indexes GEOM), so a single forward pass suffices and no chunk can reference something not yet defined.
 
@@ -82,6 +93,24 @@ decode ∘ encode = id_SVGDoc   (up to INV-9 quantization; exact on the canonica
 
 Error side: all `Error` outcomes are exceptions carrying a reason string; no partial results are emitted. This satisfies the TAD requirement that every operation is total over its sorts — failure is a value of the result type, never undefined behavior.
 
+### 3.1 Decode as a transition function
+
+Per the TAD contract, `decode` is a fold of a formal transition function over the byte stream, with all state explicit (no hidden control state, no call-stack dependence):
+
+```
+Registers (the complete mutable state):
+  R = ( phase, elem-i, cmd-i, penX, penY, subX, subY, first )
+  phase ∈ {HEADER, CHUNK-TAG, CHUNK-SIZE, CHUNK-BODY, DONE}
+  penX, penY, subX, subY ∈ ℤ (bounded: |·| ≤ 64M × 2⁴⁸, see INV-8)
+  first ∈ {true, false}
+
+δ : R × Byte → R            (byte-structured: varint assembly consumes sub-frames)
+decode(file) = fold δ over file, starting from R₀ = (HEADER, 0,0,0,0,0,0, true)
+  emitting geometry as a side-written stream (INV-7 guarantees its safety)
+```
+
+Every invariant INV-1/2/4 is a guard predicate on a δ transition; a failed guard terminates the fold with an Error. The fold is the implementation's contract: any conforming decoder — JS, Rust, hardware — is an implementation of δ, and none of them requires a program stack whose depth depends on the input.
+
 ## 4. Threat model → invariant mapping
 
 | attacker goal | status | guarded by |
@@ -109,7 +138,7 @@ Error side: all `Error` outcomes are exceptions carrying a reason string; no par
 | F-8 | no integrity checksum | design gap | reserved chunk planned | open (v0.2) |
 | F-9 | pen accumulation beyond 2⁵³ loses precision | minor, adversarial only | saturation candidate | open |
 | F-10 | no formal fuzzing campaign | process | radamsa/AFL pass pending | open |
-| F-11 | encoder XML walker recurses without explicit depth cap: hostile nesting (50k `<g>`) → RangeError. **Verified fail-closed** (catchable exception, process survives; not a browser crash). **Decoder unaffected**: no recursive productions in the grammar, constant call depth (INV-11) | implementation | explicit depth cap (D_MAX, proposed 64) or iterative walker | **accepted; fix planned — not patched during review freeze** |
+| F-11 | encoder XML walker recurses without explicit depth cap: hostile nesting (50k `<g>`) → RangeError. **Verified fail-closed** (catchable exception, process survives; not a browser crash). **Decoder unaffected**: no recursive productions in the grammar, constant call depth (INV-11) | implementation | **adopted the reviewer's Stack-TAD prescription**: replace the recursive walker with an iterative one carrying an explicit, bounded stack (D_MAX, proposed 64) — nesting controlled in a program-owned TAD, not in the JS call stack | **accepted; fix planned — not patched during review freeze** |
 
 **Reading of the ledger**: to date, zero findings invalidate the design model itself (container, grammar, delta encoding); every code finding is an implementation guard (F-2…F-5, F-11) or a documented decision gap (F-6…F-9). That distinction is checkable against the ledger and is the evidence on which "wrong foundations" should be judged.
 
