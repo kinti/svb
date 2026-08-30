@@ -16,9 +16,15 @@ Context-free is the *upper bound* of this grammar's complexity, not its class. A
 
 1. chunk boundaries are explicit (declared size), not bracketed — no matching to remember;
 2. the six path commands have fixed arities — no command history to replay;
-3. no production is recursive — counting nesting is bounded by the grammar itself (at most two live counters: element index inside GEOM, command index inside a path; points consume within a command).
+3. no production is recursive — counting nesting is bounded by the grammar itself.
 
-Therefore the minimal abstract machine for the decoder is a **finite automaton with a fixed number of data registers and counters** — memory O(1), independent of file size and nesting. The depth-limit question is dissolved, not solved: there is no stack whose depth a hostile file could drive. The pushdown where a stack *is* the right model (SVG/XML ingestion, i.e. `parseXml` + the encoder walker) is exactly where finding F-11 lives, and its fix adopts the reviewer's Stack-TAD prescription (§5).
+**Precision on the counters (sharpened after external review):** the machine is *not* a pure finite automaton — it does keep counters, and some are nested. The exact inventory, verifiable in `decoder.js`:
+
+- **Chunk skipping is arithmetic, not iteration**: INV-10's skip is `pos += size` after a bounds check — no counter, no loop, one pointer update. Declared lengths convert skipping into arithmetic.
+- **Scope nesting is a grammar constant (≤ 3)**: payload scope → chunk-body scope (one nested `ByteReader` per chunk; chunks never nest inside chunks) → loop scope. It never grows with input.
+- **Simultaneously live data counters ≤ 2**: element-index → command-index inside a path (or element-index → polyline/dash count). Points consume with fixed arity ≤ 3 — a constant-bound loop, not a data counter.
+
+Therefore the minimal abstract machine is a **one-pass deterministic computation in O(log n) space** (the counters must hold values up to the payload size, i.e. log₂ n bits each; their *number* is O(1)). The memory hierarchy across the review discussion: DFA (O(1)) ⊂ **SVB decoder (O(log n), fixed variable count)** ⊂ PDA (stack grows with input nesting, ≤ O(n)). Against a hostile file, none of these variables' *depth* is attacker-controlled — a 20-byte file and a 64 MB file run the same variables. The pushdown where an input-driven stack *is* the right model (SVG/XML ingestion: `parseXml` + the encoder walker) is exactly where finding F-11 lives, and its fix adopts the reviewer's Stack-TAD prescription (§5).
 
 **Alphabet**
 
