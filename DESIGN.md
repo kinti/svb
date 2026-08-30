@@ -55,6 +55,18 @@ Each rung removes one predictable redundancy: (1→2) decimal ASCII and verbose 
 
 **Review conclusions for v0.2.** (a) The repetition chunk is not novel design — it is `<use>` re-invented at the binary layer; SVG's semantics (referenced template + transform + cascade) are the reference model to port. (b) The entropy rung has two candidate mechanisms (EXI-style grammar codes, rANS) — the information ladder says they are additive to, not alternatives of, the repetition model. (c) The honest scoreboard for v0.2: SVB must reach rung 4 and re-add rung-1's repetition model at the binary layer, or concede the large-file segment to svg+brotli.
 
+### 0.4 Information budget — measured (2026-08-30, `benchmark/budget.mjs`)
+
+| class | svb raw (B) | H0 (bits/B) | order-0 floor | svb+br | svg+br (target) | verdict |
+|---|---|---|---|---|---|---|
+| icon (pin) | 91 | 4.25 | 48 | 89 | 204 | floor wins 76% |
+| illustration | 367 | 5.48 | 252 | 302 | 417 | floor wins 40% |
+| map-12k (repetitive) | 278,029 | 4.32 | 150,266 | 10,185 | 9,911 | **floor loses ×15** |
+| organic (random curves) | 85,060 | 6.43 | 68,342 | 68,830 | 63,190 | floor loses 8% |
+| 10 bootstrap icons | 1,471 | 4.70 | 864 | 633 | 956 | floor wins 10% |
+
+**Reading**: (1) on icons/mixed illustration the entropy rung alone beats the target — additive upside confirmed; (2) on repetitive large files the redundancy is **large-scale repetition, not byte-frequency skew** — order-0 entropy is useless there (floor ×15 above target) while LZ finds 4× — quantifying that the **back-reference chunk is the dominant lever** and entropy only adds after it; (3) the organic class has H0 ≈ 6.4 (no correlation to remove) — it is a *geometry-modeling* problem (adaptive quantization / curve fitting), not a compression-stage problem → deferred to v0.3. **v0.2 priority order from the budget**: ① repetition chunk ② entropy stage ③ command packing ④ organic modeling deferred. Target to beat on large files: brotli-on-svb is 10,185 vs svg+brotli 9,911 — a semantic back-reference stage (repetition captured at the right granularity, which generic LZ cannot reach) + packing + entropy must land below 9,911.
+
 ## 1. The format as a formal system
 
 SVB is a **context-free** byte grammar with length-prefixed, skippable chunks. Everything a decoder needs to accept or reject a file is decidable from the bytes seen so far; there is no backtracking, no context-sensitive syntax, and no unbounded lookahead.
