@@ -6,6 +6,28 @@
 > **Rev. 4 (2026-08-30)**: algebraic specification added (§3, TAD layer: sorts, operations, pre/postconditions) following external review. Finding **F-11** accepted into the ledger with precise scoping: the *encoder's* XML walker recurses over nesting (RangeError, fail-closed — verified, not a browser crash); the *decoder* is immune by design — the binary grammar contains no recursive productions and call depth is constant (proof in INV-11). No code changed (review freeze); fix planned.
 > **Rev. 5 (2026-08-30)**: machine classification added (§1.1) following external review: the container's minimal abstract machine is **not** a pushdown automaton — length prefixes and fixed arities reduce the language to a finite automaton with a grammar-bounded number of counters (O(1) memory, independent of input nesting). Decode formalized as a transition function over registers (§3.1). F-11 disposition updated: the fix adopts the reviewer's Stack-TAD prescription for the encoder (explicit, bounded stack instead of the JS call stack).
 
+## 0. Application context and state of the art (modeling input for v0.2)
+
+*Added per external review — step zero of the modeling phase, before designing any v0.2 feature. Research date 2026-08-30.*
+
+### 0.1 Application context (the space-time tradeoff, answered)
+
+| question | answer for SVB |
+|---|---|
+| what to prioritize | bandwidth/storage at delivery, **and** decode must remain fast with O(1)-memory (it runs in a Service Worker, often on mobile) |
+| browser function | **downloaded once, rendered/animated repeatedly** — a static asset, not a stream. Tile-pyramid streaming (MVT's niche) is out of scope |
+| hardware | mobile web: RAM/CPU/battery constrained → **asymmetric design is mandatory**: pay heavy compression at ENCODE time (offline, once), keep decode a simple fold. → favors rANS (expensive encode, table-driven fast decode) and/or grammar-informed structural codes (nearly free at decode) |
+
+### 0.2 Prior art survey
+
+| prior art | technique | what SVB adopts (v0.2) |
+|---|---|---|
+| **MVT** — Mapbox Vector Tiles (protobuf tiles; built so clients style/render map data client-side; ~80% smaller than alternatives per academic measurement) | **CommandInteger**: command id + repeat count packed into ONE varint (`(count << 3) \| id`; MoveTo/LineTo/ClosePath); ParameterInteger = zigzag varint deltas vs previous point; per-layer keys/values interning | command+count packing for paths (attacks the measured ~12% command-byte cost with an industry-proven encoding); validates our style interning. NOT adopting: tile pyramids/streaming (different niche) |
+| **Geobuf** (Agafonkin; near-lossless GeoJSON → protobuf; 6–8× smaller than GeoJSON, often beats gzipped TopoJSON and MVT) | delta + zigzag coordinates; configurable precision | technique family **identical** to ours (independent validation of DD-1). SVB does not compete with it: different domain (geodata exchange/analysis vs web display images); SVB's differentiators are web-image features — a11y chunk, script-free by design, Service Worker delivery — not compression technique |
+| **EXI** (W3C REC; XML as event sequence; each event gets a compact **event code from the current grammar state**; schema-informed grammars shorten codes for expected content; has a profile for **bounded dynamic memory**) | structural compression via grammar knowledge — strong compression **without a generic entropy stage**, keeping decoders simple and memory-bounded | the F-12 answer that preserves decode simplicity: **grammar-informed event coding over our own context-free grammar** (expected transitions get short codes — EXI proves this beats schema-less generic compression for structured data). Optional rANS stage on top for the large-file segment (INV-5 ceiling applies) |
+
+**Position statement (answering "en qué mejora esto a Geobuf / estás luchando contra EXI"):** SVB does not compete with Geobuf (different domain, same technique family — the family is independently validated) and does not fight EXI: EXI is a **technique donor** — its grammar-driven coding maps 1:1 onto the context-free grammar this design already declares. MVT is the closest domain precedent, and its existence validates the demand for binary vector data on the web; SVB's niche remains static web vector images with verifiable accessibility and script-free delivery.
+
 ## 1. The format as a formal system
 
 SVB is a **context-free** byte grammar with length-prefixed, skippable chunks. Everything a decoder needs to accept or reject a file is decidable from the bytes seen so far; there is no backtracking, no context-sensitive syntax, and no unbounded lookahead.
