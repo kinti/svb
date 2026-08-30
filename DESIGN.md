@@ -124,6 +124,14 @@ Every invariant INV-1/2/4 is a guard predicate on a δ transition; a failed guar
 | parser confusion (unknown constructs) | mitigated | INV-10, INV-11 |
 | file integrity (silent corruption) | **open** — checksum chunk planned (v0.2) | — |
 
+### 4.1 Design decisions challenged in review
+
+**DD-1 — variable-length integers (LEB128 + zigzag + delta) for coordinate streams.**
+Challenge: LEB128 was designed for debug/Wasm integers, not geometry. **Upheld.** The pattern is the established one for this exact data shape: MIDI variable-length quantities (1983), Protocol Buffers' zigzag rationale for signed values, and OpenStreetMap PBF `DenseNodes` — delta + zigzag varints for planetary-scale map coordinates. Known non-optimal alternatives (group-varint, bit-packing) are recorded as a v0.2 benchmark experiment; "non-optimal" ≠ "wrong".
+
+**DD-2 — no entropy-coding stage in v0.1.**
+Challenge: without Huffman/arithmetic coding SVB "can never compete with SVG+Brotli in production". **Upheld against measurement**: the benchmark's headline *is* the production condition — inputs optimized with svgo, competitors compressed with brotli (quality 11) — and raw SVB beats svgo+brotli on 100% of 1,087 files; giving both sides brotli, median ×0.541. Mechanism: the delta layer is a reversible transform that removes semantic redundancy (adjacent coordinates differ little) *before* any entropy stage; generic text compressors cannot see it — brotli extracts ~39% from SVG text but ~0–5% from SVB (sometimes growing it; see "compressing the compressed"). The deferred entropy stage is a documented trade (auditability vs est. 10–15%), not an incapacity; decision trigger for v0.2 recorded in the roadmap.
+
 ## 5. Findings ledger (audit trail)
 
 | id | finding | class | disposition | status |
