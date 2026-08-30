@@ -159,4 +159,8 @@ Challenge: without Huffman/arithmetic coding SVB "can never compete with SVG+Bro
 
 ## 6. Process rule (the fix for the process failure)
 
+**Model before code.** Programming is translation; engineering is modeling. For every format feature — and for the format itself — the order is: (1) an **information budget** for the target domain (what the data contains, what repeats, what is predictable, entropy per class), (2) the mathematical model (TAD, grammar, invariants, pre/postconditions), (3) external review of *that model* — reductio ad absurdum from domain knowledge invited as a formal gate, (4) only then, implementation, which is translation of the approved model.
+
+This rule is F-12's legacy: the entropy/repetition model was missing from the original blueprints, and a domain-based reductio ad absurdum — written *before reading any code* — invalidated the design decision in two sentences, where 29 tests (which can only check what their authors thought to check) had found nothing. Tests verify bricks; model review audits blueprints. Both are required, in that order.
+
 No feature may enter the format — new chunk, flag, opcode, or field — without, **in this order**: (1) its ABNF grammar extension, (2) the invariants it preserves or adds stated here with their bounds, (3) its tests written against hostile inputs, (4) only then, implementation. The v0.1.0 → v0.1.1 history is the cautionary example of the reverse order. Code is frozen during external review: findings enter the ledger; fixes ship in planned releases, except for actively exploitable issues.
