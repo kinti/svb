@@ -3,7 +3,7 @@
 **Status**: normative for v0.2+ · formalized from the shipped v0.1.1 system (`cb07954`–`e10e328`)
 **Why this document exists**: the v0.1 implementation preceded a written theoretical model — an external review correctly identified that as the root process failure. This document is that missing phase, executed as design (not as patch), so that all future work (v0.2 gradients, ANIM, the Rust port) starts from invariants instead of from inherited patches. History: v0.1.0 shipped without INV-2/3/5 and was vulnerable (see findings ledger).
 
----
+> **Rev. 4 (2026-08-30)**: algebraic specification added (§3, TAD layer: sorts, operations, pre/postconditions) following external review. Finding **F-11** accepted into the ledger with precise scoping: the *encoder's* XML walker recurses over nesting (RangeError, fail-closed — verified, not a browser crash); the *decoder* is immune by design — the binary grammar contains no recursive productions and call depth is constant (proof in INV-11). No code changed (review freeze); fix planned.
 
 ## 1. The format as a formal system
 
@@ -19,7 +19,7 @@ SVB is a **context-free** byte grammar with length-prefixed, skippable chunks. E
 | fixed coordinate | varuint or varint ÷ coord_scale | coord_scale ≥ 1 |
 | color | RGB24 [+ α8] | |
 
-**Grammar**: the ABNF in the audit brief §4 (to be merged into SPEC as appendix). Context-free by construction: the six canonical path commands have fixed arities; SVG constructs that require a state machine (S/T reflection, H/V, implicit command repetition) are normalized away by the encoder. Decoder runtime state is exactly four registers: pen x, pen y, subpath start, first-point flag.
+**Grammar**: the ABNF in the audit brief §4 (to be merged into SPEC as appendix). Context-free by construction: the six canonical path commands have fixed arities; SVG constructs that require a state machine (S/T reflection, H/V, implicit command repetition) are normalized away by the encoder. The ABNF contains **no recursive productions** — verified: no non-terminal appears in its own expansion chain.
 
 **Chunk topology**: ascending tag order (STYLE → GEOM → A11Y → META). All cross-references point backward (GEOM indexes STYLE; A11Y indexes GEOM), so a single forward pass suffices and no chunk can reference something not yet defined.
 
@@ -37,10 +37,52 @@ Each invariant lists: statement → where it is enforced → the test that pins 
 - **INV-8 — No non-finite values.** NaN/Infinity are unreachable in the decode flow: (a) all inputs are byte-derived integers (INV-1); (b) the only arithmetic is addition; (c) the only division is guarded (INV-4); (d) magnitude bound: addends < 2⁴⁹, addition count bounded by INV-5 → cumulative ≤ ~10²², far below the float64 overflow threshold (~1,8·10³⁰⁸). *Test*: seeded property test — 200 hostile random-delta files, output never contains NaN/Infinity. **Preconditions**: INV-1 and INV-4 are load-bearing for this invariant.
 - **INV-9 — Bounded, non-cumulative error.** Quantization error ≤ 1/(2·coord_scale) per coordinate, emission rounding ≤ 5·10⁻⁴, and no drift across points: the encoder quantizes absolute coordinates and derives deltas between quantized values; the decoder's sum recovers exactly those quantized absolutes. Precision loss is possible only for adversarial magnitude accumulation beyond 2⁵³ (documented, minor; saturation is the candidate future guard).
 - **INV-10 — Forward compatibility.** Unknown chunk tags are skipped by declared size (≤ remaining bytes). New chunk types must therefore always carry an honest size prefix.
-- **INV-11 — Decidable grammar.** Acceptance/rejection is decidable by single-pass parsing; the context-free grammar and the four registers fully define parser state. No FSM over command history is required — SVG constructs that would require one never reach the binary layer.
-- **INV-12 — No executable semantics.** The format has no chunk type capable of carrying code, and no feature shall introduce one (see process rule, §5).
+- **INV-11 — Decidable grammar, constant parser depth.** Acceptance/rejection is decidable by single-pass parsing; the context-free grammar and the four registers fully define parser state. Because the grammar has **no recursive productions**, the decoder's call depth is a constant (~4 frames: `decode → readGeomChunk → readShape → readStyleEntry`); stack-depth attacks on the **decoder** are structurally impossible. The *encoder*'s XML walker does recurse over input nesting — see F-11 for its disposition.
+- **INV-12 — No executable semantics.** The format has no chunk type capable of carrying code, and no feature shall introduce one (see process rule, §6).
 
-## 3. Threat model → invariant mapping
+## 3. Algebraic specification (TAD layer)
+
+Sorts (data kinds over which operations are defined):
+
+```
+Byte ∈ [0,255]   Seq<Byte>   Varuint ∈ [0, 2⁴⁹−1]   Varint ∈ [−2⁴⁸, 2⁴⁸−1]
+Coord ∈ float64  SVGDoc (canonical subset: see SPEC §1 + encoder normalizations)
+SVBFile ∈ Seq<Byte>   Warnings ∈ Seq<String>
+```
+
+Operations:
+
+```
+encode : SVGDoc × config → SVBFile ⊕ Error × Warnings
+  requires (pre):
+    R1  |input| ≤ 10 MB                                 (INV-6)
+    R2  input parses into the SVG subset grammar
+    R3  quantized values within varuint alphabet        (INV-3)
+    R4  nesting depth ≤ D_MAX                           (F-11: cap to be specified,
+                                                         proposed 64; not yet enforced)
+  ensures (post):
+    P1  magic/version/flags/grammar valid               (§1)
+    P2  decode(encode(d)) ≈ d, per-coordinate error
+        ≤ 1/(2·coord_scale) + 5·10⁻⁴                    (INV-9)
+    P3  every lossy decision appears in Warnings
+    P4  time and memory O(|input|)
+
+decode : SVBFile × config → SVGDoc ⊕ Error
+  requires (pre):
+    R5  magic "SVB", version = 1                        (§1)
+    R6  coord_scale > 0                                 (INV-4)
+    R7  decompressed payload ≤ 64 MB                    (INV-5)
+  ensures (post):
+    P5  output contains only finite numbers and escaped text (INV-7, INV-8)
+    P6  terminates in a single pass, O(n) time, constant call depth (INV-11)
+    P7  unknown chunks skipped                          (INV-10)
+
+decode ∘ encode = id_SVGDoc   (up to INV-9 quantization; exact on the canonical subset)
+```
+
+Error side: all `Error` outcomes are exceptions carrying a reason string; no partial results are emitted. This satisfies the TAD requirement that every operation is total over its sorts — failure is a value of the result type, never undefined behavior.
+
+## 4. Threat model → invariant mapping
 
 | attacker goal | status | guarded by |
 |---|---|---|
@@ -48,11 +90,12 @@ Each invariant lists: statement → where it is enforced → the test that pins 
 | script injection via emitted SVG | blocked by design | INV-7, INV-12 |
 | CPU exhaustion (lying counts, EOF loops) | mitigated | INV-1, INV-2 |
 | memory exhaustion (mass allocation, DEFLATE bomb) | mitigated | INV-2, INV-5 |
+| stack exhaustion via nesting | **decoder**: impossible (INV-11, no recursive productions) · **encoder**: fail-closed RangeError, cap planned (F-11) |
 | non-finite / absurd coordinates | bounded | INV-3, INV-4, INV-8 |
 | parser confusion (unknown constructs) | mitigated | INV-10, INV-11 |
 | file integrity (silent corruption) | **open** — checksum chunk planned (v0.2) | — |
 
-## 4. Findings ledger (audit trail)
+## 5. Findings ledger (audit trail)
 
 | id | finding | class | disposition | status |
 |---|---|---|---|---|
@@ -66,9 +109,10 @@ Each invariant lists: statement → where it is enforced → the test that pins 
 | F-8 | no integrity checksum | design gap | reserved chunk planned | open (v0.2) |
 | F-9 | pen accumulation beyond 2⁵³ loses precision | minor, adversarial only | saturation candidate | open |
 | F-10 | no formal fuzzing campaign | process | radamsa/AFL pass pending | open |
+| F-11 | encoder XML walker recurses without explicit depth cap: hostile nesting (50k `<g>`) → RangeError. **Verified fail-closed** (catchable exception, process survives; not a browser crash). **Decoder unaffected**: no recursive productions in the grammar, constant call depth (INV-11) | implementation | explicit depth cap (D_MAX, proposed 64) or iterative walker | **accepted; fix planned — not patched during review freeze** |
 
-**Reading of the ledger**: to date, zero findings invalidate the design model itself (container, grammar, delta encoding); every code finding is an implementation guard (F-2…F-5) or a documented decision gap (F-6…F-9). That distinction is checkable against the ledger and is the evidence on which "wrong foundations" should be judged.
+**Reading of the ledger**: to date, zero findings invalidate the design model itself (container, grammar, delta encoding); every code finding is an implementation guard (F-2…F-5, F-11) or a documented decision gap (F-6…F-9). That distinction is checkable against the ledger and is the evidence on which "wrong foundations" should be judged.
 
-## 5. Process rule (the fix for the process failure)
+## 6. Process rule (the fix for the process failure)
 
 No feature may enter the format — new chunk, flag, opcode, or field — without, **in this order**: (1) its ABNF grammar extension, (2) the invariants it preserves or adds stated here with their bounds, (3) its tests written against hostile inputs, (4) only then, implementation. The v0.1.0 → v0.1.1 history is the cautionary example of the reverse order. Code is frozen during external review: findings enter the ledger; fixes ship in planned releases, except for actively exploitable issues.
