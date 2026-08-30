@@ -184,5 +184,6 @@ Hardening rules, **normative for implementations**:
 
 ## 13. History
 
+- **v0.2 (2026-08-30)** — repetition + gradients + command runs (version byte `2`; v1 files remain valid): chunk DEF (templates + instance elements, translate-only or full-matrix — SVG `<use>` semantics), chunk GRAD (linear/radial, OBB-u8 or userSpace coordinates, optional gradientTransform matrix), style fill/stroke type 3 = gradient reference, MVT-style command-run packing (`(count << 3) | cmd`), new flags HAS_DEF/HAS_GRAD, invariants INV-13 (reference integrity, flat templates) and INV-14 (expansion budget ≤ 1M elements — the template-bomb guard), strict gradient vocabulary. Design model and measured budget: DESIGN.md.
 - **v0.1.1 (2026-08-30)** — security hardening release: EOF guards on all readers, declared-count bounds, decompression output cap, encoder input cap, quadratic attr parsing fixed; §12 added (normative). Format unchanged: files produced by v0.1 encoders remain valid, version byte stays `1`.
 - **v0.1 (2026-08-29)** — first public draft: header, chunk container, STYLE/GEOM/A11Y/META, geometric subset, ANIM reserved.

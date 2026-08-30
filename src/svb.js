@@ -2,19 +2,23 @@
 // Little-endian varuint (LEB128), zigzag varint, fixed-point, colors.
 
 export const MAGIC = [0x53, 0x56, 0x42]; // "SVB"
-export const VERSION = 1;
+export const VERSION = 1;      // v0.1 grammar (still readable by v0.2 decoders)
+export const VERSION2 = 2;     // v0.2 grammar: DEF/GRAD chunks, instances, command runs
 
 export const FLAG = {
   COMPRESSED: 1 << 0,
   HAS_A11Y: 1 << 1,
   HAS_ANIMATION: 1 << 2, // reserved
   HAS_STYLE: 1 << 3,
+  HAS_DEF: 1 << 4,       // v0.2: template chunk
+  HAS_GRAD: 1 << 5,      // v0.2: gradient chunk
 };
 
 // Security limits (see SPEC §12): implementations SHOULD refuse inputs and
 // decompressed payloads beyond these bounds.
 export const MAX_INPUT = 10 * 1024 * 1024;        // SVG accepted by the encoder
 export const MAX_DECOMPRESSED = 64 * 1024 * 1024; // SVB payload after DEFLATE
+export const MAX_EXPANSION = 1_000_000;           // INV-14: emitted elements cap (template bomb)
 
 export const CHUNK = {
   STYLE: 0x01,
@@ -22,9 +26,11 @@ export const CHUNK = {
   A11Y: 0x03,
   ANIM: 0x04, // reserved
   META: 0x05,
+  DEF: 0x06,  // v0.2: templates
+  GRAD: 0x07, // v0.2: gradients
 };
 
-export const SHAPE = { RECT: 1, CIRCLE: 2, ELLIPSE: 3, LINE: 4, POLYLINE: 5, POLYGON: 6, PATH: 7 };
+export const SHAPE = { RECT: 1, CIRCLE: 2, ELLIPSE: 3, LINE: 4, POLYLINE: 5, POLYGON: 6, PATH: 7, INSTANCE: 8 };
 
 export const CMD = { M: 0, L: 1, C: 2, Q: 3, A: 4, Z: 5 };
 

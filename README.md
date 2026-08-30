@@ -45,13 +45,13 @@ The mark — an S-shaped vector path whose anchor points are binary bits (filled
 |---|---|
 | Median svb / svg-optimized | **×0.272** (mean ×0.270) |
 | SVB raw smaller than svgo+brotli | **100% of files** |
-| Median svb+brotli / svgo+brotli | ×0.541 |
+| Median svb+brotli / svgo+brotli | ×0.542 |
 | Median size | 467 B svg → **139 B svb** |
 | Clean encodes | 1,087 / 1,087 (0 lossy, 0 excluded, round-trip verified) |
 
 By source: Feather ×0.205 · Bootstrap ×0.279 · Simple Icons ×0.305. The worst file in the corpus still saves ~47%.
 
-**Honest scope — large files.** This corpus is icons/logos (small, low structural repetition). On large production-like illustrations (140–580 KB: repetitive maps, schematics, organic curves — `benchmark/large.mjs`), the picture changes: raw SVB stays far ahead (×0.04–0.42 of the SVG), but under brotli delivery **svb+brotli converges to parity or falls behind svg+brotli (×0.91–1.09)** — text repetition gives brotli's back-references more to work with than the delta-coded binary stream. Finding **F-12** in [DESIGN.md](DESIGN.md); the v0.2 answer is a repetition/back-reference chunk plus the deferred entropy stage, promoted from "deferred" to "required" for the large-file segment.
+**Large files (140–580 KB production-like: maps, schematics, organic curves).** v0.2 added the repetition model (`<use>` semantics as binary templates + instances) and MVT-style command packing — measured in `benchmark/large.mjs`: raw SVB is ×0.003–0.41 of the optimized SVG, and under brotli delivery **svb+brotli beats svg+brotli by 11–94%** on repetitive classes (×0.233 / ×0.143 / ×0.064). The organic no-repetition class stays at ×1.055 (conceded; geometry modeling is v0.3). History: F-12 in the findings ledger recorded the v0.1.1 gap this closes.
 
 ## Numbers — handmade samples (the repo's `demo/samples/`)
 

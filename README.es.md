@@ -51,7 +51,7 @@ La marca — un camino vectorial en forma de S cuyos puntos de ancla son bits (l
 
 Por fuente: Feather ×0,205 · Bootstrap ×0,279 · Simple Icons ×0,305. El peor archivo del corpus aún ahorra ~47%.
 
-**Alcance honesto — archivos grandes.** Este corpus son iconos/logos (pequeños, poca repetición estructural). En ilustraciones grandes tipo producción (140–580 KB: mapas repetitivos, esquemas, curvas orgánicas — `benchmark/large.mjs`), el panorama cambia: el SVB crudo sigue muy por delante (×0,04–0,42 del SVG), pero con entrega brotli **svb+brotli converge al empate o cae por detrás de svg+brotli (×0,91–1,09)** — la repetición textual le da más trabajo a las back-references de brotli que el stream binario delta-codificado. Hallazgo **F-12** en [DESIGN.md](DESIGN.md); la respuesta v0.2 es un chunk de repetición/back-reference más la etapa de entropía aplazada, promovida de "aplazada" a "requerida" para el segmento de archivos grandes.
+**Archivos grandes (140–580 KB tipo producción: mapas, esquemas, curvas orgánicas).** La v0.2 añadió el modelo de repetición (semántica `<use>` como templates + instancias binarias) y packing de comandos estilo MVT — medido en `benchmark/large.mjs`: el SVB crudo es ×0,003–0,41 del SVG optimizado, y con entrega brotli **svb+brotli gana a svg+brotli por 11–94%** en las clases repetitivas (×0,233 / ×0,143 / ×0,064). La clase orgánica sin repetición queda en ×1,055 (concedida; su modelado geométrico es v0.3). Historia: F-12 en el ledger de [DESIGN.md](DESIGN.md) registraba este hueco de la v0.1.1, cerrado ahora.
 
 ## Números — muestras artesanales (`demo/samples/`)
 
