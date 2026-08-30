@@ -51,16 +51,25 @@ decodes the binary and responds with regular SVG. No plugin, no special browser 
   await navigator.serviceWorker.register('./sw.js', { type: 'module' });
   // esperar a que el SW controle ESTA página (primer install: activa con clients.claim)
   if (!navigator.serviceWorker.controller) {
-    await new Promise((res) =>
-      navigator.serviceWorker.addEventListener('controllerchange', res, { once: true }));
+    await new Promise((res) => {
+      const t = setTimeout(res, 3000); // no bloquear eternamente
+      navigator.serviceWorker.addEventListener('controllerchange', () => { clearTimeout(t); res(); }, { once: true });
+    });
   }
 
-  for (const name of NAMES) {
+  // carga con reintento: durante una actualización del SW los primeros intentos
+  // pueden llegar a un decoder viejo que rechaza los archivos nuevos
+  const load = (name, attempt = 0) => {
     const img = document.getElementById('img-' + name);
-    img.src = `samples/${name}.svb`;
+    const url = `samples/${name}.svb` + (attempt ? `?r=${attempt}` : '');
     img.onload = () => status(name, ' ✓', true);
-    img.onerror = () => status(name, ' ✗', false);
-  }
+    img.onerror = () => {
+      if (attempt < 3) setTimeout(() => load(name, attempt + 1), 250 * (attempt + 1));
+      else status(name, ' ✗', false);
+    };
+    img.src = url;
+  };
+  for (const name of NAMES) load(name);
 
   const fetchSize = async (url) => {
     const res = await fetch(url);
