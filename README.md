@@ -51,6 +51,8 @@ The mark — an S-shaped vector path whose anchor points are binary bits (filled
 
 By source: Feather ×0.205 · Bootstrap ×0.279 · Simple Icons ×0.305. The worst file in the corpus still saves ~47%.
 
+**Honest scope — large files.** This corpus is icons/logos (small, low structural repetition). On large production-like illustrations (140–580 KB: repetitive maps, schematics, organic curves — `benchmark/large.mjs`), the picture changes: raw SVB stays far ahead (×0.04–0.42 of the SVG), but under brotli delivery **svb+brotli converges to parity or falls behind svg+brotli (×0.91–1.09)** — text repetition gives brotli's back-references more to work with than the delta-coded binary stream. Finding **F-12** in [DESIGN.md](DESIGN.md); the v0.2 answer is a repetition/back-reference chunk plus the deferred entropy stage, promoted from "deferred" to "required" for the large-file segment.
+
 ## Numbers — handmade samples (the repo's `demo/samples/`)
 
 | file | svg | +gzip | +brotli | **svb** | svb+gzip | svb+brotli | svb/svg |
