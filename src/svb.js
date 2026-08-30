@@ -29,10 +29,16 @@ export const SHAPE = { RECT: 1, CIRCLE: 2, ELLIPSE: 3, LINE: 4, POLYLINE: 5, POL
 export const CMD = { M: 0, L: 1, C: 2, Q: 3, A: 4, Z: 5 };
 
 // ---- varuint (LEB128) ----
+// Alphabet: 7 bytes max = 49 bits (values < 2^49). The decoder rejects any
+// varuint whose 7th byte still carries a continuation bit, so the encoder MUST
+// refuse out-of-alphabet values instead of emitting undecodable files.
+
+export const VARUINT_MAX = 2 ** 49 - 1;
 
 export function writeVarUint(bytes, n) {
   if (n < 0 || !Number.isFinite(n)) throw new RangeError(`varuint out of range: ${n}`);
   n = Math.round(n);
+  if (n > VARUINT_MAX) throw new RangeError(`varuint overflow: ${n} exceeds 2^49-1 alphabet`);
   do {
     let b = n & 0x7f;
     n = Math.floor(n / 128);

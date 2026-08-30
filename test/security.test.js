@@ -7,7 +7,7 @@ import zlib from 'node:zlib';
 import { encode } from '../src/encoder.js';
 import { decode } from '../src/decoder.js';
 import { decodeAsync } from '../src/browser-decode.js';
-import { ByteWriter, MAGIC, MAX_DECOMPRESSED } from '../src/svb.js';
+import { ByteWriter, MAGIC, MAX_DECOMPRESSED, writeVarUint, readVarUint, VARUINT_MAX } from '../src/svb.js';
 
 const DEFLATE = (u8) => zlib.deflateRawSync(u8, { level: 9 });
 const INFLATE = (u8) => zlib.inflateRawSync(u8, { maxOutputLength: MAX_DECOMPRESSED });
@@ -114,6 +114,37 @@ test('security: coord_scale = 0 is rejected (it guards the only division in the 
   chunk.u8(2).varuint(b.length).raw(b);
   const bytes = new Uint8Array([...head.toUint8Array(), ...chunk.toUint8Array()]);
   assert.throws(() => decode(bytes), /coord_scale/);
+});
+
+// ---------- varuint alphabet: 7 bytes = 49 bits ----------
+
+test('security: varuint alphabet caps at 7 bytes / 2^49-1, both directions', () => {
+  // max legal value round-trips in exactly 7 bytes
+  const w = new ByteWriter();
+  w.varuint(VARUINT_MAX);
+  assert.equal(w.bytes.length, 7);
+  const [v, p] = readVarUint(w.toUint8Array(), 0);
+  assert.equal(v, VARUINT_MAX);
+  assert.equal(p, 7);
+
+  // a 7th byte that still carries the continuation bit -> rejected on the 7th read
+  const hostile = new Uint8Array(7).fill(0x80); // 7 continuation bytes, no terminator
+  assert.throws(() => readVarUint(hostile, 0), /varuint too long/);
+
+  // values beyond the alphabet cannot be written (encoder/decoder symmetry)
+  assert.throws(() => {
+    const big = new ByteWriter();
+    big.varuint(VARUINT_MAX + 1);
+  }, /varuint overflow/);
+});
+
+// the encoder must not emit files its own decoder would reject: an SVG whose
+// coordinates quantize beyond the varuint alphabet fails at encode time
+test('security: encoder refuses coordinates beyond the varuint alphabet', () => {
+  const hostile = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">
+    <rect x="9007199254740992" width="2" height="2" fill="red"/>
+  </svg>`; // 2^53: passes float64 exactness, overflows the varuint alphabet
+  assert.throws(() => encode(hostile, { deflate: null }), /varuint overflow/);
 });
 
 test('security: hostile random deltas never produce NaN/Infinity in the emitted SVG', () => {
