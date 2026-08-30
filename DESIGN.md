@@ -28,6 +28,33 @@
 
 **Position statement (answering "en qué mejora esto a Geobuf / estás luchando contra EXI"):** SVB does not compete with Geobuf (different domain, same technique family — the family is independently validated) and does not fight EXI: EXI is a **technique donor** — its grammar-driven coding maps 1:1 onto the context-free grammar this design already declares. MVT is the closest domain precedent, and its existence validates the demand for binary vector data on the web; SVB's niche remains static web vector images with verifiable accessibility and script-free delivery.
 
+### 0.3 The ancestor, analyzed: SVG 1.1 as an information system
+
+*The most important prior art of all — the format SVB succeeds — had no algorithmic analysis in this document. Fixed.*
+
+**What SVG is, formally.** Three stacked layers: (1) **syntax** — an application of XML 1.0 (1998): a context-free tree grammar, parseable only by a pushdown machine (unbounded nesting); (2) **structure** — a DOM scene graph with grouping, `<defs>/<use>` references, and CSS-style inheritance; (3) **presentation** — the painter's algorithm: elements paint in document order, no spatial index mandated, precision is renderer-dependent (two conforming renderers legitimately output different pixels). W3C REC September 2001, effectively frozen since 1.1 (2003).
+
+**The information ladder.** For an N-point image, the per-axis information actually transported:
+
+| representation (the ladder) | bits/axis/point | who occupies it |
+|---|---|---|
+| 1. absolute ASCII ("123.45") — SVG as shipped | ~28–48 bits incl. syntax share | **SVG** |
+| 2. absolute binary, quantized 1/64 | ~15 bits | (unused intermediate) |
+| 3. quantized **delta** zigzag varint | ~5–10 bits | **SVB v0.1** |
+| 4. entropy-coded residual (Huffman/rANS/grammar codes) | → source entropy (<5 bits) | **nobody yet — F-12** |
+
+Each rung removes one predictable redundancy: (1→2) decimal ASCII and verbose markup; (2→3) absolute-position correlation; (3→4) residual frequency skew. **F-12 in one line: v0.1 climbed from rung 1 to rung 3 and declared victory, while the competition (svg+brotli) exploits rung-1 repetition AND rung-4 coding.** On small files the raw lead dominates; on large repetitive files rungs 1+4 beat rung 3 (measured, F-12).
+
+**Redundancy models SVG had that SVB v0.1 dropped** — the blueprint failures, made precise:
+
+1. **`<defs>`/`<use>` — the back-reference model.** SVG represents repetition as a pointer + transform (~200 bytes per instance in text; near-free informationally). v0.1's flattening (groups→matrices) destroyed this: every instance re-stores full geometry. **The F-12 fix (repetition chunk) must re-invent `<use>` at the binary layer**: template id + instance transform, ~10–20 B/instance.
+2. **Style inheritance / CSS cascade — lazy redundancy.** SVG declares shared properties once and resolves them at render time. SVB's interned style table is the *precomputed* analog (resolved at encode: correct for decode cost — INV-7 stays), but the cascade's compactness (one declaration, many elements) is preserved by interning.
+3. **Transport entropy as a doctrine.** SVG's founding decision — "compression is a transport concern; the format stays text" — was rational in the HTTP/1.1 gzip era. F-12 is the measured refutation of that doctrine for constrained binary formats aimed at delivery: when the format is the product, the entropy rung belongs *inside* it.
+
+**Algorithmic properties reviewed.** Parsing: O(n), pushdown (tree). Rendering: O(elements) per pass, painter's order. Precision: renderer-dependent (vs INV-9's deterministic quantization — an SVB win worth stating). Security: scripts + foreignObject in format (the surface SVB removes). Accessibility: `title`/`desc` exist in the spec — first-class there, absent in practice (the gap SVB's A11Y chunk addresses by making them enforceable).
+
+**Review conclusions for v0.2.** (a) The repetition chunk is not novel design — it is `<use>` re-invented at the binary layer; SVG's semantics (referenced template + transform + cascade) are the reference model to port. (b) The entropy rung has two candidate mechanisms (EXI-style grammar codes, rANS) — the information ladder says they are additive to, not alternatives of, the repetition model. (c) The honest scoreboard for v0.2: SVB must reach rung 4 and re-add rung-1's repetition model at the binary layer, or concede the large-file segment to svg+brotli.
+
 ## 1. The format as a formal system
 
 SVB is a **context-free** byte grammar with length-prefixed, skippable chunks. Everything a decoder needs to accept or reject a file is decidable from the bytes seen so far; there is no backtracking, no context-sensitive syntax, and no unbounded lookahead.
