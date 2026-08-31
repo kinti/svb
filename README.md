@@ -15,7 +15,7 @@
 
 **▶ Live demo**: <https://kinti.github.io/svb/demo/> — `<img src="*.svb">` rendering in current browsers via a Service Worker.
 
-> También disponible en [español](README.es.md) · Project article: <https://jquin.net/svb/>
+> Spanish project article: <https://jquin.net/svb/>
 
 ## Overview
 
@@ -50,6 +50,8 @@ SVB addresses each point at the format level:
 | Raw SVB smaller than svgo+brotli | **100% of files** |
 | Median svb+brotli / svgo+brotli | ×0.542 |
 | Median size | 467 B → **139 B** |
+| Mean savings per file | **72.7%** (570 B saved) |
+| Aggregate bytes saved across the corpus | **73.8%** |
 
 **Large production-like files** (140–580 KB: repetitive maps, schematics, organic curves — the class where naive binary formats typically lose to brotli). v0.2's repetition model (templates + delta-chained instances) and command packing close the gap:
 
