@@ -13,5 +13,16 @@
   },
   "engines": {
     "node": ">=18"
+  },
+  "devDependencies": {
+    "@mapbox/vector-tile": "^3.0.0",
+    "bootstrap-icons": "^1.13.1",
+    "feather-icons": "^4.29.2",
+    "geobuf": "^4.0.0",
+    "geojson-vt": "^4.0.3",
+    "pbf": "^3.2.1",
+    "simple-icons": "^16.29.0",
+    "svgo": "^4.1.0",
+    "vt-pbf": "^3.1.3"
   }
 }
