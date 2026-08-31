@@ -69,9 +69,12 @@ Same content, same visual: a 12,100-polygon + 222-line synthetic map (city grid,
 | Geobuf (precision 10⁶) | 405,743 | 405,743 | 14,555 |
 | MVT (z0, extent 4096) | 281,903 | 42,882 (gzip) | 11,895 |
 | SVG flat (svgo) | 578,822 | — | 10,255 |
+| EXI schema-less (bit-packed) | 293,222 | 46,375 (gzip) | — |
 | **SVB v0.2** | **1,727** | **1,490** | **1,443** |
 
-**SVB is 10× smaller than Geobuf+brotli and 8.2× smaller than MVT+brotli on identical content.**
+**SVB is 7× smaller than SVG+brotli, 8.2× smaller than MVT+brotli, 10× smaller than Geobuf+brotli — and 203× smaller than schema-less EXI — on identical content.**
+
+EXI caveats (stated): schema-less mode (built-in grammars — EXI's weakest setting; the schema-informed mode needs an SVG XSD and is EXI's best case, untested); EXI is lossless at the XML level (no coordinate quantization — svb's 1/64 lossy bound is a different, weaker distortion contract); processor: EXIficient 1.0.7 on Java 26, encoder source at `benchmark/exi/`. Even granting both caveats, schema-less EXI at 293 KB is two orders of magnitude from svb — the structural difference (XML event stream vs quantized binary deltas) dominates any tuning.
 
 Caveats, stated plainly:
 
