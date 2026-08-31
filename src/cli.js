@@ -11,6 +11,8 @@ import zlib from 'node:zlib';
 import { encode } from './encoder.js';
 import { decode } from './decoder.js';
 import { MAX_DECOMPRESSED } from './svb.js';
+import { validate } from './validate.js';
+import { runFuzz } from './fuzz.js';
 
 const DEFLATE = (u8) => zlib.deflateRawSync(u8, { level: 9 });
 const INFLATE = (u8) => zlib.inflateRawSync(u8, { maxOutputLength: MAX_DECOMPRESSED });
@@ -23,6 +25,8 @@ try {
     case 'decode': cmdDecode(args); break;
     case 'roundtrip': cmdRoundtrip(args); break;
     case 'bench': cmdBench(args); break;
+    case 'validate': cmdValidate(args); break;
+    case 'fuzz': cmdFuzz(args); break;
     default:
       console.error(usage());
       process.exitCode = cmd ? 1 : 0;
@@ -38,7 +42,9 @@ usage:
   svb encode <in.svg> <out.svb> [--scale 64] [--generator "app"]
   svb decode <in.svb> <out.svg>
   svb roundtrip <in.svg>            encode→decode, writes <in>.decoded.svg
-  svb bench <in.svg> [more.svg ...] sizes vs gzip/brotli`;
+  svb bench <in.svg> [more.svg ...] sizes vs gzip/brotli
+  svb validate <in.svb> [--json]  # conformance + accessibility report
+  svb fuzz [files…] [--iterations N] [--seed S]  # mutation campaign`;
 }
 
 function readArg(args, name, def) {
@@ -75,6 +81,35 @@ function cmdRoundtrip(args) {
   writeFileSync(outp, svg);
   warn(warnings);
   console.log(`svg ${readFileSync(inp).length} B → svb ${bytes.length} B → svg ${Buffer.byteLength(svg)} B · wrote ${outp}`);
+}
+
+function cmdValidate(args) {
+  const file = args.find((a) => !a.startsWith('--'));
+  if (!file) throw new Error('validate needs <in.svb> [--json]');
+  const report = validate(readFileSync(file), { inflate: INFLATE });
+  if (args.includes('--json')) {
+    console.log(JSON.stringify(report, null, 2));
+  } else {
+    for (const c of report.checks) {
+      console.log(` ${c.pass ? '✓' : '✗'} ${c.id.padEnd(5)} ${c.requirement}${c.detail ? ' — ' + c.detail : ''}`);
+    }
+    console.log('\nverdict:', report.verdict);
+    if (report.seal) console.log('seal: SVB accesible' + (report.sealFull ? ' (+description)' : ''));
+    if (report.error) console.log('error:', report.error);
+  }
+  if (report.verdict === 'FAIL') process.exitCode = 1;
+}
+
+function cmdFuzz(args) {
+  const files = args.filter((a) => !a.startsWith('--') && a.endsWith('.svb'));
+  const it = Number(readArg(args, '--iterations', 500));
+  const seed = Number(readArg(args, '--seed', 42));
+  const bases = (files.length ? files : ['demo/samples/icon-pin.svb', 'demo/samples/logo-star.svb'])
+    .map((f) => new Uint8Array(readFileSync(f)));
+  const r = runFuzz(bases, { iterations: it, seed, decode });
+  console.log(`fuzz: ${r.cases} cases · ok ${r.ok} · throws ${r.threw} · BAD ${r.bad.length}`);
+  for (const b of r.bad) console.log('  BAD:', b.why, '—', b.svg);
+  if (r.bad.length) process.exitCode = 1;
 }
 
 function cmdBench(args) {
