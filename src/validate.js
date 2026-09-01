@@ -1,7 +1,6 @@
 // SVB validator — verifies conformance and the accessibility contract.
 // Model: docs/validator.md (checks V-01…V-14). Verdicts: FAIL / PASS / SEAL.
 // The validator verifies; it never repairs and never executes content.
-import { createHash } from 'node:crypto';
 import { CHUNK, ByteReader, MAX_DECOMPRESSED } from './svb.js';
 import { decode } from './decoder.js';
 import { parseXml } from './xml.js';
@@ -22,7 +21,7 @@ export function validate(bytes, opts = {}) {
     checks,
     error: null,
     a11y: { flag: false, chunk: false, name: '', description: '', labels: 0 },
-    stats: { sizeBytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') },
+    stats: { sizeBytes: bytes.length, sha256: opts.sha256 ?? null },
     validatorVersion: VALIDATOR_VERSION,
   };
 

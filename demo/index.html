@@ -33,6 +33,10 @@ decodes the binary and responds with regular SVG. No plugin, no special browser 
   <figure><div class="checker"><img class="sv" id="img-logo-star" alt="logotipo estrella en SVB"></div><figcaption>logo-star.svb <span id="st-logo-star"></span></figcaption></figure>
 </div>
 
+<h2>Validation — runs entirely in your browser</h2>
+<p>The reference validator (<code>src/validate.js</code>) checks conformance (V-01…V-10) and the accessibility contract (V-11…V-13). Verdict per file:</p>
+<div id="val"></div>
+
 <h2>Sizes</h2>
 <table id="sizes"><thead><tr><th>file</th><th>svg</th><th>.svb</th><th>saving</th></tr></thead><tbody></tbody></table>
 
@@ -89,6 +93,19 @@ decodes the binary and responds with regular SVG. No plugin, no special browser 
   // el SW ya devuelve SVG decodificado: la vista previa del A11Y es la respuesta misma
   const decodedHead = await (await fetch('samples/icon-pin.svb')).text();
   document.getElementById('a11y').textContent = decodedHead.slice(0, decodedHead.indexOf('>') + 1);
+
+  // validador corriendo en tu navegador sobre los ficheros reales
+  const { validate } = await import('../src/validate.js');
+  const valEl = document.getElementById('val');
+  for (const name of NAMES) {
+    const buf = new Uint8Array(await (await fetch(`samples/${name}.svb?raw=1&v=${Date.now()}`)).arrayBuffer());
+    const r = validate(buf);
+    const row = document.createElement('div');
+    row.style.fontFamily = 'ui-monospace, monospace';
+    row.textContent = `${name}: ${r.verdict} — checks ${r.checks.filter((c) => c.pass).length}/${r.checks.length} · name="${r.a11y.name || '-'}"`;
+    row.style.color = r.verdict.startsWith('SEAL') ? '#070' : r.verdict === 'PASS' ? '#333' : '#b00';
+    valEl.append(row);
+  }
 </script>
 </body>
 </html>

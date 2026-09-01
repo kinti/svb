@@ -6,6 +6,7 @@
 //   node src/cli.js bench in.svg [more.svg ...]
 
 import { readFileSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { basename } from 'node:path';
 import zlib from 'node:zlib';
 import { encode } from './encoder.js';
@@ -53,11 +54,17 @@ function readArg(args, name, def) {
 }
 
 function cmdEncode(args) {
-  const [inp, outp] = args.filter((a) => !a.startsWith('--'));
+  const positional = [];
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '--generator') { i++; continue; }
+    if (!args[i].startsWith('--')) positional.push(args[i]);
+  }
+  const [inp, outp] = positional;
   if (!inp || !outp) throw new Error('encode needs <in.svg> <out.svb>');
   const scale = Number(readArg(args, '--scale', 64));
   const generator = readArg(args, '--generator', 'svb-cli/0.1');
-  const { bytes, warnings, stats } = encode(readFileSync(inp, 'utf8'), { scale, generator, deflate: DEFLATE });
+  const rawOut = args.includes('--raw');
+  const { bytes, warnings, stats } = encode(readFileSync(inp, 'utf8'), { scale, generator, deflate: rawOut ? null : DEFLATE });
   writeFileSync(outp, bytes);
   warn(warnings);
   const svgSize = readFileSync(inp).length;
@@ -86,7 +93,9 @@ function cmdRoundtrip(args) {
 function cmdValidate(args) {
   const file = args.find((a) => !a.startsWith('--'));
   if (!file) throw new Error('validate needs <in.svb> [--json]');
-  const report = validate(readFileSync(file), { inflate: INFLATE });
+  const raw = readFileSync(file);
+  const report = validate(raw, { inflate: INFLATE });
+  report.stats.sha256 = createHash('sha256').update(raw).digest('hex');
   if (args.includes('--json')) {
     console.log(JSON.stringify(report, null, 2));
   } else {
