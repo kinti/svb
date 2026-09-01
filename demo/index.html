@@ -175,6 +175,10 @@ decodes the binary and responds with regular SVG. No plugin, no special browser 
     for (const f of e.dataTransfer.files) if (f.name.toLowerCase().endsWith('.svb')) reportFile(f);
   });
 
+
+  // pista amable: si el fichero empieza por '<svg' es un SVG decodificado, no el binario
+  window.__svbValidate = validate;
+</script>
 </div>
 <footer class="site-bar">
   <span>MIT · © 2026 Jesús Quintana · <a href="https://jquin.net/svb/">jquin.net/svb</a></span>
@@ -182,9 +186,5 @@ decodes the binary and responds with regular SVG. No plugin, no special browser 
   <a href="../benchmark/">benchmark</a> ·
   <a href="../SPEC.md">spec</a>
 </footer>
-
-  // pista amable: si el fichero empieza por '<svg' es un SVG decodificado, no el binario
-  window.__svbValidate = validate;
-</script>
 </body>
 </html>
