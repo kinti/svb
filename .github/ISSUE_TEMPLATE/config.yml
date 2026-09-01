@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions & ideas
+    url: https://github.com/kinti/svb/discussions
+    about: Open a discussion instead of an issue — usage questions, format ideas, and show-and-tell live here.
+  - name: Project page (ES/EN)
+    url: https://jquin.net/en/svb/
+    about: The narrative page with live demo, benchmark, and the interactive validator.

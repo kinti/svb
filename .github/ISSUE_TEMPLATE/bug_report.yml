@@ -1,0 +1,34 @@
+name: Bug report
+description: Something crashed, hung, rejected a valid file, or produced wrong output.
+labels: [bug]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead? Include the exact command or browser flow.
+      placeholder: "`svb encode in.svg out.svb` printed a warning and dropped my rects…"
+    validations:
+      required: true
+  - type: textarea
+    id: files
+    attributes:
+      label: Minimal reproducer
+      description: Attach the smallest `.svg` or `.svb` that shows the problem. Hostile/crashing files are especially welcome — a file that gets past the fail-closed contract becomes a regression test.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Node version (`node -v`), OS, and browser if the Service Worker is involved.
+      placeholder: Node 22.2, macOS 15, Safari 18
+    validations:
+      required: false
+  - type: textarea
+    id: logs
+    attributes:
+      label: Output / logs
+      description: Warnings, stack traces, or the validator report (`svb validate file.svb --json`).
+    validations:
+      required: false

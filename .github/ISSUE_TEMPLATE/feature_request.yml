@@ -1,0 +1,25 @@
+name: Feature idea
+description: A real-world need the format doesn't cover yet — or covered it badly.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What were you trying to do with SVB, and where did it fall short? Concrete use cases decide the roadmap — "my SVG export contains <text> and it all got dropped" is a perfect report.
+    validations:
+      required: true
+  - type: textarea
+    id: today
+    attributes:
+      label: How do you solve it today?
+      description: Outlining to paths, splitting files, staying with SVG, another format… knowing the current workaround matters.
+    validations:
+      required: false
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else
+      description: Prior art, related formats, sample files.
+    validations:
+      required: false
