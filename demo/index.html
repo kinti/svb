@@ -46,9 +46,9 @@ decodes the binary and responds with regular SVG. No plugin, no special browser 
 <h2>Original vs .svb</h2>
 <div class="row">
   <figure><div class="checker"><img class="sv" src="samples/icon-pin.svg" alt="icono map-pin en SVG"></div><figcaption>icon-pin.svg</figcaption></figure>
-  <figure><div class="checker"><img class="sv" id="img-icon-pin" alt="icono map-pin en SVB"></div><figcaption>icon-pin.svb <span id="st-icon-pin"></span> · <a href="samples/icon-pin.svb?raw=1" download="icon-pin.svb">⬇ binary</a></figcaption></figure>
-  <figure><div class="checker"><img class="sv" id="img-illustration" alt="ilustración en SVB"></div><figcaption>illustration.svb <span id="st-illustration"></span> · <a href="samples/illustration.svb?raw=1" download="illustration.svb">⬇ binary</a></figcaption></figure>
-  <figure><div class="checker"><img class="sv" id="img-logo-star" alt="logotipo estrella en SVB"></div><figcaption>logo-star.svb <span id="st-logo-star"></span> · <a href="samples/logo-star.svb?raw=1" download="logo-star.svb">⬇ binary</a></figcaption></figure>
+  <figure><div class="checker"><img class="sv" data-svb="1" src="samples/icon-pin.svb" alt="icono map-pin en SVB"></div><figcaption>icon-pin.svb <span id="st-icon-pin"></span> · <a href="samples/icon-pin.svb?raw=1" download="icon-pin.svb">⬇ binary</a></figcaption></figure>
+  <figure><div class="checker"><img class="sv" data-svb="1" src="samples/illustration.svb" alt="ilustración en SVB"></div><figcaption>illustration.svb <span id="st-illustration"></span> · <a href="samples/illustration.svb?raw=1" download="illustration.svb">⬇ binary</a></figcaption></figure>
+  <figure><div class="checker"><img class="sv" data-svb="1" src="samples/logo-star.svb" alt="logotipo estrella en SVB"></div><figcaption>logo-star.svb <span id="st-logo-star"></span> · <a href="samples/logo-star.svb?raw=1" download="logo-star.svb">⬇ binary</a></figcaption></figure>
 </div>
 
 <h2>Validate a .svb file</h2>
@@ -84,19 +84,24 @@ decodes the binary and responds with regular SVG. No plugin, no special browser 
     });
   }
 
-  // carga con reintento: durante una actualización del SW los primeros intentos
-  // pueden llegar a un decoder viejo que rechaza los archivos nuevos
-  const load = (name, attempt = 0) => {
+  // los <img> ya llevan src en el HTML; solo marcamos estado y reintentamos
+  // si un SW viejo en actualización los rechaza una vez
+  for (const name of NAMES) {
     const img = document.getElementById('img-' + name);
-    const url = `samples/${name}.svb` + (attempt ? `?r=${attempt}` : '');
-    img.onload = () => status(name, ' ✓', true);
-    img.onerror = () => {
-      if (attempt < 3) setTimeout(() => load(name, attempt + 1), 250 * (attempt + 1));
-      else status(name, ' ✗', false);
-    };
-    img.src = url;
-  };
-  for (const name of NAMES) load(name);
+    const mark = (ok) => status(name, ok ? ' ✓' : ' ✗', ok);
+    if (img.complete && img.naturalWidth > 0) { mark(true); continue; }
+    img.addEventListener('load', () => mark(true), { once: true });
+    img.addEventListener('error', () => {
+      let n = Number(img.dataset.retries || 0) + 1;
+      img.dataset.retries = n;
+      if (n <= 6) setTimeout(() => { const u = new URL(img.src, location); u.searchParams.set('r', n); img.src = u; mark(false); }, 300 * n);
+      else mark(false);
+    }, { once: true });
+    if (!(img.complete && img.naturalWidth > 0)) {
+      const u = new URL(img.src, location); u.searchParams.set('r', Date.now());
+      img.src = u; // relanza la carga ahora que el SW puede controlar
+    }
+  }
 
   const fetchSize = async (url) => {
     const res = await fetch(url);
