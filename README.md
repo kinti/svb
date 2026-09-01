@@ -23,7 +23,7 @@ SVG is the universal vector format — and its file format has been frozen for t
 
 - **Specification** — byte-level, context-free grammar, normative invariants: [SPEC.md](SPEC.md) (Spanish mirror included)
 - **Design model** — invariants, threat model, findings ledger: [DESIGN.md](DESIGN.md)
-- **Reference implementation** — dependency-free JavaScript: encoder, decoder, CLI ([src/](src/))
+- **Reference implementation** — dependency-free JavaScript: encoder, decoder, CLI, validator, fuzzer ([src/](src/))
 - **Delivery** — Service Worker polyfill + comparison page: [live demo](https://kinti.github.io/svb/demo/)
 
 ## Why
@@ -69,7 +69,9 @@ node src/cli.js encode in.svg out.svb
 node src/cli.js decode out.svb back.svg
 node src/cli.js roundtrip in.svg      # encode→decode, writes the decoded SVG
 node src/cli.js bench in.svg [more…]  # svg/gzip/brotli/svb size table
-npm test                              # 43 tests (node:test, zero dependencies)
+node src/cli.js validate in.svb [--json]  # conformance report + accessibility seal
+node src/cli.js fuzz [files…]             # mutation campaign against the decoder
+npm test                              # 44 tests (node:test, zero dependencies)
 ```
 
 Delivery uses a Service Worker: requests for `*.svb` are decoded (DEFLATE via `DecompressionStream`, then the reference decoder) and answered as `image/svg+xml`, so `<img src="icon.svb">` works in any current browser — the same "format + runtime" path that carried Lottie and Rive.
@@ -92,7 +94,7 @@ Security properties, by design: no executable constructs (removes the uploaded-S
 1. **Geometry modeling for the organic class** (adaptive quantization / curve fitting) — v0.3.
 2. **Entropy stage** (grammar-informed codes or rANS) — trigger: measured gap to svg+brotli > 10% after repetition modeling.
 3. **`<text>` and clip/mask** — the remaining subset gaps.
-4. **Validator + "accessible SVB" seal** — audit-ready accessibility checking.
+4. ~~Validator + "accessible SVB" seal~~ — **core shipped in v0.2**: `svb validate` runs 14 conformance and accessibility checks (V-01…V-14, see [docs/validator.md](docs/validator.md)) and awards the **"SVB accesible" seal**. Next: report schema hardening + a11y-toolkit MCP integration.
 5. **Fuzzing campaign** — required before any production use with untrusted files.
 6. **Rust → WASM port** of the hot path.
 
