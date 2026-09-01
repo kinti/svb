@@ -74,7 +74,7 @@ export function encode(svgString, opts = {}) {
       if (tag === 'title' || tag === 'desc') continue;
       if (tag === 'g' || tag === 'a' || tag === 'switch') {
         if (node.attrs.style) warnings.push('style attribute ignored (v0.1: presentation attributes only)');
-        const own = readPresentationAttrs(node.attrs, warnings);
+        const own = readPresentationAttrs(node.attrs, warnings, gradIndex);
         const style = { ...inheritedStyle };
         for (const k of inheritableKeys) if (own[k] !== undefined) style[k] = own[k];
         let m = matrix;

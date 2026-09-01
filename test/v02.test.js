@@ -157,6 +157,21 @@ test('v0.2: linear gradient round-trips through style + GRAD chunk', () => {
   assert.ok(out.includes('#457b9d'), 'second stop survives');
 });
 
+test('v0.2: gradient fill inherited from a <g> container round-trips', () => {
+  // regression: container branch called readPresentationAttrs without gradIndex → TypeError
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+    <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#e63946"/><stop offset="1" stop-color="#457b9d"/>
+    </linearGradient></defs>
+    <g fill="url(#g)"><rect width="40" height="40"/><rect x="50" width="40" height="40"/></g>
+  </svg>`;
+  const { bytes, warnings } = enc(svg);
+  assert.deepEqual(warnings, []);
+  const { svg: out } = dec(bytes);
+  assertWellFormed(out);
+  assert.ok(out.includes('url(#svbg0)'), 'inherited gradient fill applied to shapes');
+});
+
 test('v0.2: gradient with unknown type rejected', () => {
   const grad = new ByteWriter();
   grad.varuint(1);                        // 1 gradient
