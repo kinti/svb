@@ -7,6 +7,10 @@
 <title>SVB real-world benchmark — 1,087 production SVGs</title>
 <style>
   :root { color-scheme: light dark; }
+  .site-bar { display: flex; gap: 1.1rem; flex-wrap: wrap; align-items: center; font-size: .9rem; padding: .55rem 1rem; border-bottom: 1px solid #8884; }
+  .site-bar a { text-decoration: none; opacity: .85; }
+  .site-bar a:hover { opacity: 1; text-decoration: underline; }
+  .site-bar .brand { font-weight: 700; margin-right: auto; }
   body { font: 16px/1.5 system-ui, sans-serif; max-width: 1020px; margin: 2rem auto; padding: 0 1rem; }
   h1 { font-size: 1.4rem; } h2 { font-size: 1.1rem; margin-top: 2.2rem; }
   .cards { display: flex; gap: 1rem; flex-wrap: wrap; }
@@ -25,6 +29,14 @@
 </style>
 </head>
 <body>
+<header class="site-bar">
+  <span class="brand">SVB</span>
+  <a href="../demo/">Demo</a>
+  <a href="../SPEC.md">Spec</a>
+  <a href="https://github.com/kinti/svb/releases">Releases</a>
+  <a href="https://jquin.net/svb/">Article</a>
+  <a href="https://github.com/kinti/svb">GitHub</a>
+</header>
 <h1><img src="../brand/logo.svg" alt="" width="28" height="28" style="vertical-align:-5px"> SVB real-world benchmark</h1>
 <p>1,087 production SVGs (Feather Icons, Bootstrap Icons, Simple Icons — sampled with seed 42),
 each one optimized with <strong>svgo multipass</strong> first, then encoded with SVB v0.1.
@@ -100,5 +112,11 @@ clean round-trip verified per file · <span id="meta"></span> ·
     render(q ? clean.filter((f) => f.name.includes(q) || f.source.includes(q)) : clean);
   });
 </script>
+<footer class="site-bar">
+  <span>MIT · © 2026 Jesús Quintana · <a href="https://jquin.net/svb/">jquin.net/svb</a></span>
+  <a href="https://github.com/kinti/svb">repo</a> ·
+  <a href="../demo/">demo</a> ·
+  <a href="../SPEC.md">spec</a>
+</footer>
 </body>
 </html>

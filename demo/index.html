@@ -38,8 +38,7 @@
   <a href="https://jquin.net/svb/">Article</a>
   <a href="https://github.com/kinti/svb">GitHub</a>
 </header>
-<div class="wrap">
-<h1><img src="../brand/logo.svg" alt="" width="30" height="30" style="vertical-align:-5px"> SVB — Scalable Vector Binary <small>v0.2</small></h1>
+<div class="wrap"><h1><img src="../brand/logo.svg" alt="" width="30" height="30" style="vertical-align:-5px"> SVB — Scalable Vector Binary <small>v0.2</small></h1>
 <p>The <code>&lt;img src="*.svb"&gt;</code> below are served by a <strong>Service Worker</strong>: it intercepts the request,
 decodes the binary and responds with regular SVG. No plugin, no special browser — this is the format's entry path.</p>
 
@@ -51,17 +50,12 @@ decodes the binary and responds with regular SVG. No plugin, no special browser 
   <figure><div class="checker"><img class="sv" data-svb="1" id="img-logo-star" src="samples/logo-star.svb" alt="logotipo estrella en SVB"></div><figcaption>logo-star.svb <span id="st-logo-star"></span> · <a href="samples/logo-star.svb?raw=1" download="logo-star.svb">⬇ binary</a></figcaption></figure>
 </div>
 
-<h2>Validate a .svb file</h2>
-<p>Drop or pick your own <code>.svb</code> — the 14 conformance and accessibility checks run entirely in your browser. Nothing leaves your machine, and you get the SHA-256 for audit citation.</p>
-<p><input type="file" id="file" accept=".svb" multiple> <span class="muted" id="drop-hint">or drop files here</span></p>
-<div id="reports"></div>
+<h2>Sizes</h2>
+<table id="sizes"><thead><tr><th>file</th><th>svg</th><th>.svb</th><th>saving</th></tr></thead><tbody></tbody></table>
 
 <h2>Validation — runs entirely in your browser</h2>
 <p>The reference validator (<code>src/validate.js</code>) checks conformance (V-01…V-10) and the accessibility contract (V-11…V-13). Verdict per file:</p>
 <div id="val"></div>
-
-<h2>Sizes</h2>
-<table id="sizes"><thead><tr><th>file</th><th>svg</th><th>.svb</th><th>saving</th></tr></thead><tbody></tbody></table>
 
 <h2>Built-in accessibility</h2>
 <p>The A11Y chunk travels inside the binary. The header the Service Worker decodes for <code>icon-pin.svb</code>:</p>
@@ -179,6 +173,11 @@ decodes the binary and responds with regular SVG. No plugin, no special browser 
   // pista amable: si el fichero empieza por '<svg' es un SVG decodificado, no el binario
   window.__svbValidate = validate;
 </script>
+<h2>Validate a .svb file</h2>
+<p>Drop or pick your own <code>.svb</code> — the 14 conformance and accessibility checks run entirely in your browser. Nothing leaves your machine, and you get the SHA-256 for audit citation.</p>
+<p><input type="file" id="file" accept=".svb" multiple> <span class="muted" id="drop-hint">or drop files here</span></p>
+<div id="reports"></div>
+
 </div>
 <footer class="site-bar">
   <span>MIT · © 2026 Jesús Quintana · <a href="https://jquin.net/svb/">jquin.net/svb</a></span>
