@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -19,9 +19,26 @@
   .status { color: #b00; } .ok { color: #070; }
   code { background: #8882; padding: 1px 5px; border-radius: 4px; }
   #a11y { white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-all; }
+  .site-bar { display: flex; gap: 1.1rem; flex-wrap: wrap; align-items: center; font-size: .9rem; padding: .55rem 1rem; border-bottom: 1px solid #8884; }
+  footer.site-bar { border-bottom: none; border-top: 1px solid #8884; margin-top: 2.5rem; color: inherit; opacity: .85; }
+  .site-bar a { text-decoration: none; opacity: .85; }
+  .site-bar a:hover { opacity: 1; text-decoration: underline; }
+  .brand { font-weight: 700; margin-right: auto; }
+  body { max-width: 960px; margin: 0 auto; padding: 0 1rem 0; }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 0 1rem 2rem; }
+  @media (min-width: 700px) { .site-bar { padding-left: calc((100% - 960px)/2 + 1rem); padding-right: calc((100% - 960px)/2 + 1rem); } }
 </style>
 </head>
 <body>
+<header class="site-bar">
+  <span class="brand">SVB</span>
+  <a href="../benchmark/">Benchmark</a>
+  <a href="../SPEC.md">Spec</a>
+  <a href="https://github.com/kinti/svb/releases">Releases</a>
+  <a href="https://jquin.net/svb/">Article</a>
+  <a href="https://github.com/kinti/svb">GitHub</a>
+</header>
+<div class="wrap">
 <h1><img src="../brand/logo.svg" alt="" width="30" height="30" style="vertical-align:-5px"> SVB — Scalable Vector Binary <small>v0.2</small></h1>
 <p>The <code>&lt;img src="*.svb"&gt;</code> below are served by a <strong>Service Worker</strong>: it intercepts the request,
 decodes the binary and responds with regular SVG. No plugin, no special browser — this is the format's entry path.</p>
@@ -152,6 +169,14 @@ decodes the binary and responds with regular SVG. No plugin, no special browser 
     e.preventDefault();
     for (const f of e.dataTransfer.files) if (f.name.toLowerCase().endsWith('.svb')) reportFile(f);
   });
+
+</div>
+<footer class="site-bar">
+  <span>MIT · © 2026 Jesús Quintana · <a href="https://jquin.net/svb/">jquin.net/svb</a></span>
+  <a href="https://github.com/kinti/svb">repo</a> ·
+  <a href="../benchmark/">benchmark</a> ·
+  <a href="../SPEC.md">spec</a>
+</footer>
 
   // pista amable: si el fichero empieza por '<svg' es un SVG decodificado, no el binario
   window.__svbValidate = validate;
