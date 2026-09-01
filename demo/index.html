@@ -33,6 +33,11 @@ decodes the binary and responds with regular SVG. No plugin, no special browser 
   <figure><div class="checker"><img class="sv" id="img-logo-star" alt="logotipo estrella en SVB"></div><figcaption>logo-star.svb <span id="st-logo-star"></span></figcaption></figure>
 </div>
 
+<h2>Validate a .svb file</h2>
+<p>Drop or pick your own <code>.svb</code> — the 14 conformance and accessibility checks run entirely in your browser. Nothing leaves your machine, and you get the SHA-256 for audit citation.</p>
+<p><input type="file" id="file" accept=".svb" multiple> <span class="muted" id="drop-hint">or drop files here</span></p>
+<div id="reports"></div>
+
 <h2>Validation — runs entirely in your browser</h2>
 <p>The reference validator (<code>src/validate.js</code>) checks conformance (V-01…V-10) and the accessibility contract (V-11…V-13). Verdict per file:</p>
 <div id="val"></div>
@@ -106,6 +111,46 @@ decodes the binary and responds with regular SVG. No plugin, no special browser 
     row.style.color = r.verdict.startsWith('SEAL') ? '#070' : r.verdict === 'PASS' ? '#333' : '#b00';
     valEl.append(row);
   }
+
+  // ---- validador de ficheros propios (upload/drop, todo client-side) ----
+  const input = document.getElementById('file');
+  const reports = document.getElementById('reports');
+  async function sha256Hex(bytes) {
+    const d = await crypto.subtle.digest('SHA-256', bytes);
+    return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, '0')).join('');
+  }
+  async function reportFile(file) {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const r = validate(bytes);
+    const sha = await crypto.subtle.digest('SHA-256', bytes);
+    const shaHex = [...new Uint8Array(sha)].map((b) => b.toString(16).padStart(2, '0')).join('');
+    const div = document.createElement('div');
+    div.className = 'card';
+    div.style.textAlign = 'left';
+    const passed = r.checks.filter((c) => c.pass).length;
+    const color = r.verdict.startsWith('SEAL') ? '#070' : r.verdict === 'PASS' ? '#333' : '#b00';
+    div.innerHTML = `
+      <div style="display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap">
+        <strong>${file.name}</strong>
+        <span style="font-weight:700; color:${color}">${r.verdict}</span>
+      </div>
+      <div style="font-size:.9rem; margin-top:.35rem">
+        checks ${passed}/${r.checks.length} ·
+        ${r.a11y.name ? 'name: "' + r.a11y.name + '"' : 'sin nombre accesible'}
+        ${r.a11y.description ? ' · con descripción' : ''}
+      </div>
+      <div style="font-size:.85rem; margin-top:.3rem; color:#666">
+        SHA-256: <code>${shaHex}</code>
+      </div>`;
+    reports.prepend(div);
+  }
+  input.addEventListener('change', () => { for (const f of input.files) reportFile(f); input.value = ''; });
+  const dropZone = document.body;
+  dropZone.addEventListener('dragover', (e) => e.preventDefault());
+  dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    for (const f of e.dataTransfer.files) if (f.name.endsWith('.svb')) reportFile(f);
+  });
 </script>
 </body>
 </html>
