@@ -102,6 +102,10 @@ Security properties, by design: no executable constructs (removes the uploaded-S
 
 This repository (spec + reference implementation + conformance suite) is the foundation. Planned next steps: `image/svb` media type registration with IANA (RFC 6838 expert review), and a W3C Community Group if adoption warrants it. Precedents: TinyVG, Lottie and Rive operate without consortium standardization; adoption decides, and the consortium — if it ever comes — comes after.
 
+## Contributing
+
+Bug reports, hostile files, and feature ideas are all welcome — see [CONTRIBUTING.md](CONTRIBUTING.md). The short version: the format is frozen for stability right now, so issues age better than feature PRs; crashes become regression tests.
+
 ## License
 
 MIT — © 2026 Jesús Quintana · [jquin.net](https://jquin.net/)
