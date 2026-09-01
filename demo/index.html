@@ -28,9 +28,9 @@ decodes the binary and responds with regular SVG. No plugin, no special browser 
 <h2>Original vs .svb</h2>
 <div class="row">
   <figure><div class="checker"><img class="sv" src="samples/icon-pin.svg" alt="icono map-pin en SVG"></div><figcaption>icon-pin.svg</figcaption></figure>
-  <figure><div class="checker"><img class="sv" id="img-icon-pin" alt="icono map-pin en SVB"></div><figcaption>icon-pin.svb <span id="st-icon-pin"></span></figcaption></figure>
-  <figure><div class="checker"><img class="sv" id="img-illustration" alt="ilustración en SVB"></div><figcaption>illustration.svb <span id="st-illustration"></span></figcaption></figure>
-  <figure><div class="checker"><img class="sv" id="img-logo-star" alt="logotipo estrella en SVB"></div><figcaption>logo-star.svb <span id="st-logo-star"></span></figcaption></figure>
+  <figure><div class="checker"><img class="sv" id="img-icon-pin" alt="icono map-pin en SVB"></div><figcaption>icon-pin.svb <span id="st-icon-pin"></span> · <a href="samples/icon-pin.svb?raw=1" download="icon-pin.svb">⬇ binary</a></figcaption></figure>
+  <figure><div class="checker"><img class="sv" id="img-illustration" alt="ilustración en SVB"></div><figcaption>illustration.svb <span id="st-illustration"></span> · <a href="samples/illustration.svb?raw=1" download="illustration.svb">⬇ binary</a></figcaption></figure>
+  <figure><div class="checker"><img class="sv" id="img-logo-star" alt="logotipo estrella en SVB"></div><figcaption>logo-star.svb <span id="st-logo-star"></span> · <a href="samples/logo-star.svb?raw=1" download="logo-star.svb">⬇ binary</a></figcaption></figure>
 </div>
 
 <h2>Validate a .svb file</h2>
@@ -149,8 +149,11 @@ decodes the binary and responds with regular SVG. No plugin, no special browser 
   dropZone.addEventListener('dragover', (e) => e.preventDefault());
   dropZone.addEventListener('drop', (e) => {
     e.preventDefault();
-    for (const f of e.dataTransfer.files) if (f.name.endsWith('.svb')) reportFile(f);
+    for (const f of e.dataTransfer.files) if (f.name.toLowerCase().endsWith('.svb')) reportFile(f);
   });
+
+  // pista amable: si el fichero empieza por '<svg' es un SVG decodificado, no el binario
+  window.__svbValidate = validate;
 </script>
 </body>
 </html>

@@ -35,7 +35,16 @@ export function validate(bytes, opts = {}) {
   // ---- V-01 magic / V-02 version / V-03 header (raw bytes, pre-decompression) ----
   const magicOk = bytes.length >= 3 && bytes[0] === 0x53 && bytes[1] === 0x56 && bytes[2] === 0x42;
   check('V-01', 'magic bytes SVB', magicOk);
-  if (!magicOk) return bail('V-01', 'magic bytes SVB', 'not an SVB file');
+  if (!magicOk) {
+    // pista útil: ¿es un SVG decodificado guardado por error (p. ej. a través de un Service Worker)?
+    let head = '';
+    try { head = new TextDecoder().decode(bytes.slice(0, 200)); } catch {}
+    if (head.includes('<svg') || head.includes('<?xml')) {
+      return bail('V-01', 'magic bytes SVB',
+        'this is a plain/decoded SVG, not an SVB binary — you probably saved the rendered file through a decoding Service Worker; download the raw .svb (demo "⬇ binary" links) and validate that');
+    }
+    return bail('V-01', 'magic bytes SVB', 'not an SVB file');
+  }
 
   const version = bytes[3];
   check('V-02', 'version in {1,2}', version === 1 || version === 2, 'version=' + version);
