@@ -6,7 +6,10 @@ The format itself is versioned by its header version byte; releases here documen
 
 ## [Unreleased]
 
-Nothing yet.
+### Fixed
+
+- **Demo XSS (found by CodeQL)**: the in-browser validator rendered the uploaded file's name and the binary's a11y strings into `innerHTML` without escaping — a crafted `.svb` could execute markup in the demo page. Reports are now built with DOM APIs and `textContent`. The codec was never affected: `.svb` still cannot carry scripts by design; this was a bug in the demo page's report UI.
+- **Demo Service Worker staleness**: the worker's module imports now carry a version query and registration uses `updateViaCache: 'none'`, so visitors with long-cached decoder code stop running stale decode logic; decode failures respond with `Cache-Control: no-store`.
 
 ## [0.2.1] — 2026-09-02
 

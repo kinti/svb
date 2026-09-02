@@ -1,7 +1,10 @@
 // SVB Service Worker polyfill: makes <img src="*.svb"> work in every browser.
 // Intercepts .svb requests, decodes to SVG, responds as image/svg+xml.
 
-import { decodeAsync } from '../src/browser-decode.js';
+// ?v= busts HTTP-cached module graphs: a visitor with an old cached
+// decoder.js would otherwise keep running stale decode logic forever,
+// because sw.js itself rarely changes (no update event, imports from cache).
+import { decodeAsync } from '../src/browser-decode.js?v=3';
 
 self.addEventListener('install', (event) => event.waitUntil(self.skipWaiting()));
 self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()));
@@ -23,7 +26,10 @@ self.addEventListener('fetch', (event) => {
         },
       });
     } catch (err) {
-      return new Response(`SVB decode failed: ${err.message}`, { status: 500 });
+      return new Response(`SVB decode failed: ${err.message}`, {
+        status: 500,
+        headers: { 'Cache-Control': 'no-store' },
+      });
     }
   })());
 });
