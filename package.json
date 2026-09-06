@@ -1,15 +1,16 @@
 {
   "name": "svb-format",
   "version": "0.2.1",
-  "description": "SVB — Scalable Vector Binary: binary vector image format for the web (v0.1)",
+  "description": "SVB \u2014 Scalable Vector Binary: binary vector image format for the web (v0.1)",
   "type": "module",
   "license": "MIT",
   "bin": {
     "svb": "./src/cli.js"
   },
   "scripts": {
-    "test": "node --test test/",
-    "demo": "node -e \"import('node:http').then(()=>{})\" && npx --yes serve demo -l 8923"
+    "test": "node --test test/*.test.js",
+    "demo": "node -e \"import('node:http').then(()=>{})\" && npx --yes serve demo -l 8923",
+    "fuzz:radamsa": "radamsa vectors/*.svb demo/samples/*.svb -n 6000 -o /tmp/svb-radamsa/m-%n.svb --seed 20260906 && node benchmark/radamsa.mjs /tmp/svb-radamsa"
   },
   "engines": {
     "node": ">=18"

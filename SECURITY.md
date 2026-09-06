@@ -27,6 +27,23 @@ You do not need to check whether the bug is new or already known — report it a
 - **By design, not a vulnerability**: the format carries no executable constructs and cannot carry scripts, event handlers, CSS, or `foreignObject` — that is the point of the format, see [SPEC §1](SPEC.md).
 - **Known limits**: the reference implementation is JavaScript (memory-safe runtime); DoS-style findings are still valid reports and welcome.
 
+## Fuzzing
+
+Two independent mutators exercise the decoder:
+
+1. **Deterministic mutator** (`src/fuzz.js`, runs in CI): bitflips, truncation, byte storms, splices, header corruption, trailing garbage. Part of every test run.
+2. **Radamsa** (optional, not in CI): a grammar-agnostic mutator with no knowledge of SVB. Latest campaign (2026-09-06, seed `20260906`, 6,000 mutants from the conformance vectors + demo samples, batches under a 60 s watchdog):
+
+| outcome | count |
+|---|---|
+| rejected cleanly | 5,655 (94.3%) |
+| decoded ok | 169 |
+| validator FAIL (verdict, not a crash) | 176 |
+| **malformed output (BAD)** | **0** |
+| **hang / crash** | **0** |
+
+Reproduce with `npm run fuzz:radamsa` (requires [radamsa](https://gitlab.com/akihe/radamsa)); `test/radamsa.test.js` runs a 300-mutant batch whenever the binary is present.
+
 ## Bug bounty
 
 None — this is a small open-source project. Credit in the release notes and the changelog is what we can offer, and it is given gladly.

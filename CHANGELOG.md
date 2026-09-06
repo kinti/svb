@@ -12,6 +12,7 @@ The format itself is versioned by its header version byte; releases here documen
 - **CLI batch mode**: `svb encode <indir/> <outdir/>` converts every `.svg` in a directory with a per-file report (size, warnings) and a summary; `--strict` turns any warning into a non-zero exit for build pipelines. CLI banner and default generator string now track the real version.
 - **Conformance vectors**: `vectors/` ships four golden `.svb` files (icon, gradient, negative coordinates, DEF templates) with sources, SHA-256 manifest, and a byte-exactness test — the kernel of a conformance suite for third-party implementations.
 - **SPEC Appendix A**: container grammar in ABNF (header, chunk framing, varuint alphabet, emission order).
+- **Radamsa fuzzing campaign**: 6,000 mutants from an independent, grammar-agnostic mutator — 0 malformed outputs, 0 hangs, 0 crashes (94.3% clean rejection). Orchestrator with hang detection (`benchmark/radamsa.mjs`), 300-mutant test that runs wherever radamsa is installed, results in SECURITY.md.
 
 ### Fixed
 
