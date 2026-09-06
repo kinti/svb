@@ -74,6 +74,7 @@ export function encode(svgString, opts = {}) {
       if (tag === 'title' || tag === 'desc') continue;
       if (tag === 'g' || tag === 'a' || tag === 'switch') {
         if (node.attrs.style) warnings.push('style attribute ignored (v0.1: presentation attributes only)');
+        if (node.attrs.mask || node.attrs['clip-path'] || node.attrs.filter) warnings.push(`<${tag}> mask/clip/filter ignored`);
         const own = readPresentationAttrs(node.attrs, warnings, gradIndex);
         const style = { ...inheritedStyle };
         for (const k of inheritableKeys) if (own[k] !== undefined) style[k] = own[k];
@@ -82,9 +83,21 @@ export function encode(svgString, opts = {}) {
         walk(node.children, m, style, depth + 1);
         continue;
       }
-      if (SKIP_TAGS.has(tag)) continue;
+      if (tag === 'defs') {
+        // gradients are collected pre-walk; everything else in defs is lost — say so
+        for (const c of node.children) {
+          if (typeof c !== 'object' || !c.tag) continue;
+          if (c.tag === 'linearGradient' || c.tag === 'radialGradient') continue;
+          warnings.push(`<${c.tag}> in <defs> skipped (not supported)`);
+        }
+        continue;
+      }
+      if (tag === 'linearGradient' || tag === 'radialGradient') continue; // collected pre-walk
+      if (tag === 'script') { warnings.push('<script> dropped (executable content is never carried by the format)'); continue; }
+      if (tag === 'style') { warnings.push('<style> dropped (CSS is not carried; use presentation attributes)'); continue; }
+      if (SKIP_TAGS.has(tag)) { warnings.push(`<${tag}> skipped (not supported)`); continue; }
       if (UNSUPPORTED_WARN.has(tag)) {
-        warnings.push(`<${tag}> skipped (not supported in v0.1)`);
+        warnings.push(`<${tag}> skipped (not supported)`);
         continue;
       }
       if (!SUPPORTED_SHAPES.has(tag)) {

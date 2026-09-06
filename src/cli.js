@@ -5,9 +5,9 @@
 //   node src/cli.js roundtrip in.svg
 //   node src/cli.js bench in.svg [more.svg ...]
 
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, statSync, readdirSync, mkdirSync } from 'node:fs';
 import { createHash } from 'node:crypto';
-import { basename } from 'node:path';
+import { basename, join } from 'node:path';
 import zlib from 'node:zlib';
 import { encode } from './encoder.js';
 import { decode } from './decoder.js';
@@ -38,9 +38,10 @@ try {
 }
 
 function usage() {
-  return `SVB v0.1.1 — Scalable Vector Binary
+  return `SVB v0.2.1 — Scalable Vector Binary
 usage:
-  svb encode <in.svg> <out.svb> [--scale 64] [--generator "app"]
+  svb encode <in.svg> <out.svb> [--scale 64] [--generator "app"] [--raw]
+  svb encode <indir/> <outdir/> [--strict]   # batch: every .svg in indir
   svb decode <in.svb> <out.svg>
   svb roundtrip <in.svg>            encode→decode, writes <in>.decoded.svg
   svb bench <in.svg> [more.svg ...] sizes vs gzip/brotli
@@ -60,16 +61,57 @@ function cmdEncode(args) {
     if (!args[i].startsWith('--')) positional.push(args[i]);
   }
   const [inp, outp] = positional;
-  if (!inp || !outp) throw new Error('encode needs <in.svg> <out.svb>');
+  if (!inp || !outp) throw new Error('encode needs <in.svg> <out.svb> or <indir/> <outdir/>');
   const scale = Number(readArg(args, '--scale', 64));
-  const generator = readArg(args, '--generator', 'svb-cli/0.1');
+  const generator = readArg(args, '--generator', 'svb-cli/0.2.1');
   const rawOut = args.includes('--raw');
-  const { bytes, warnings, stats } = encode(readFileSync(inp, 'utf8'), { scale, generator, deflate: rawOut ? null : DEFLATE });
+  const strict = args.includes('--strict');
+  const deflate = rawOut ? null : DEFLATE;
+
+  const inStat = statSafe(inp);
+  if (inStat?.isDirectory()) {
+    let outStat = statSafe(outp);
+    if (!outStat) { mkdirSync(outp, { recursive: true }); outStat = statSafe(outp); }
+    if (!outStat.isDirectory()) throw new Error('batch mode needs an output directory');
+    const files = readdirSync(inp).filter((f) => f.toLowerCase().endsWith('.svg')).sort();
+    if (!files.length) throw new Error(`no .svg files in ${inp}`);
+    let ok = 0, warned = 0, failed = 0, svgTotal = 0, svbTotal = 0;
+    for (const f of files) {
+      const src = join(inp, f);
+      const dst = join(outp, f.replace(/\.svg$/i, '') + '.svb');
+      try {
+        const { bytes, warnings, stats } = encode(readFileSync(src, 'utf8'), { scale, generator, deflate });
+        writeFileSync(dst, bytes);
+        svgTotal += readFileSync(src).length;
+        svbTotal += bytes.length;
+        if (warnings.length) {
+          warned++;
+          console.log(`  ⚠ ${f} → ${dst} (${bytes.length} B) · ${warnings.length} warning(s)`);
+          for (const w of warnings) console.log(`      · ${w}`);
+        } else {
+          ok++;
+          console.log(`  ✓ ${f} → ${dst} (${bytes.length} B) · ${stats.elements} elements`);
+        }
+      } catch (e) {
+        failed++;
+        console.log(`  ✗ ${f} — ${e.message}`);
+      }
+    }
+    console.log(`\nbatch: ${files.length} file(s) — ${ok} clean · ${warned} with warnings · ${failed} failed`);
+    console.log(`total: ${svgTotal} B svg → ${svbTotal} B svb (${(100 * svbTotal / svgTotal).toFixed(1)}%)`);
+    if (failed > 0 || (strict && warned > 0)) process.exitCode = 1;
+    return;
+  }
+
+  const { bytes, warnings, stats } = encode(readFileSync(inp, 'utf8'), { scale, generator, deflate });
   writeFileSync(outp, bytes);
   warn(warnings);
+  if (strict && warnings.length) process.exitCode = 1;
   const svgSize = readFileSync(inp).length;
   console.log(`${inp} (${svgSize} B) → ${outp} (${bytes.length} B, ${(100 * bytes.length / svgSize).toFixed(1)}%) · ${stats.elements} elements, ${stats.styles} styles`);
 }
+
+function statSafe(p) { try { return statSync(p); } catch { return null; } }
 
 function cmdDecode(args) {
   const [inp, outp] = args;

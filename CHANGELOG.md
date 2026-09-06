@@ -6,6 +6,13 @@ The format itself is versioned by its header version byte; releases here documen
 
 ## [Unreleased]
 
+### Added
+
+- **warn-all**: the encoder now reports every feature it does not carry — CSS `<style>`, `<script>`, `clipPath`/`mask`/`filter`/`pattern`/`marker`/`symbol` definitions, and `mask`/`clip-path`/`filter` attributes on container elements. Previously some of these were dropped silently; the ladder test that exposed it is documented in the repository history. No format change.
+- **CLI batch mode**: `svb encode <indir/> <outdir/>` converts every `.svg` in a directory with a per-file report (size, warnings) and a summary; `--strict` turns any warning into a non-zero exit for build pipelines. CLI banner and default generator string now track the real version.
+- **Conformance vectors**: `vectors/` ships four golden `.svb` files (icon, gradient, negative coordinates, DEF templates) with sources, SHA-256 manifest, and a byte-exactness test — the kernel of a conformance suite for third-party implementations.
+- **SPEC Appendix A**: container grammar in ABNF (header, chunk framing, varuint alphabet, emission order).
+
 ### Fixed
 
 - **Demo XSS (found by CodeQL)**: the in-browser validator rendered the uploaded file's name and the binary's a11y strings into `innerHTML` without escaping — a crafted `.svb` could execute markup in the demo page. Reports are now built with DOM APIs and `textContent`. The codec was never affected: `.svb` still cannot carry scripts by design; this was a bug in the demo page's report UI.

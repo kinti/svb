@@ -241,3 +241,26 @@ Hardening rules, **normative for implementations**:
 - **v0.2 (2026-08-31)** — repetition and gradients release (version byte `2`; v1 files remain valid): DEF chunk (flat templates, translate-only or full-matrix instances — SVG `<use>` semantics), GRAD chunk (linear/radial, OBB-u8 or userSpace coordinates, per-gradient alpha, optional gradientTransform), style fill/stroke type 3 = gradient reference, MVT-style command-run packing (`(count << 3) | cmd`), flags HAS_DEF/HAS_GRAD, invariants INV-13 (reference integrity, flat templates) and INV-14 (expansion budget ≤ 1M emitted elements — the template-bomb guard), strict gradient vocabulary.
 - **v0.1.1 (2026-08-30)** — security hardening release: EOF guards on all readers, declared-count bounds, decompression output cap, encoder input cap, quadratic attr parsing fixed; §12 added (normative). Format unchanged: files produced by v0.1 encoders remain valid, version byte stays `1`.
 - **v0.1 (2026-08-29)** — first public draft: header, chunk container, STYLE/GEOM/A11Y/META, geometric subset, ANIM reserved.
+
+## Appendix A. Container grammar (ABNF, RFC 5234)
+
+The file-level byte layout. Per-chunk payload layouts are normative in their own sections (§4–§7); a conforming decoder is a one-pass fold over this grammar with the invariants of §12.
+
+```abnf
+file         = %x53 %x56 %x42 version flags width height scale *chunk
+version      = %x01 / %x02            ; grammar level; unknown versions rejected (INV-16)
+flags        = u8                     ; bit 0 COMPRESSED · 1 HAS_A11Y · 2 HAS_ANIMATION (reserved)
+                                      ; 3 HAS_STYLE · 4 HAS_DEF · 5 HAS_GRAD
+width        = varuint                ; canvas, integer units
+height       = varuint
+scale        = varuint                ; fixed-point denominator; > 0 (INV-4)
+chunk        = chunk-type chunk-length payload
+chunk-type   = u8                     ; 0x01 STYLE · 0x02 GEOM · 0x03 A11Y · 0x04 META
+                                      ; 0x06 DEF · 0x07 GRAD
+chunk-length = varuint                ; payload octet count — skipping a chunk is
+                                      ; arithmetic (pos += n), never parsing
+payload      = chunk-lengthOCTET      ; layout per section
+varuint      = 0*6 %x80-FF %x00-7F    ; LEB128, at most 7 octets, value < 2^49 (INV-1)
+```
+
+Emission order (v0.2 encoders): `STYLE DEF GRAD GEOM A11Y META`. Only GEOM is mandatory; the rest are gated by their flag bits and may be absent. Chunk types unknown to a decoder are skipped via `chunk-length` without interpretation (forward compatibility).
