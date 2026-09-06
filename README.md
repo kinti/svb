@@ -21,9 +21,10 @@
 
 SVG is the universal vector format — and its file format has been frozen for two decades. SVB is a compact binary encoding of the same geometry, designed around three properties SVG lacks: size efficiency, verifiable accessibility, and delivery safety. Files render in current browsers through a Service Worker polyfill — no plugin, no browser changes.
 
-- **Specification** — byte-level, context-free grammar, normative invariants: [SPEC.md](SPEC.md) (Spanish mirror included)
+- **Specification** — byte-level, context-free grammar, normative invariants, container ABNF: [SPEC.md](SPEC.md)
 - **Design model** — invariants, threat model, findings ledger: [DESIGN.md](DESIGN.md)
-- **Reference implementation** — dependency-free JavaScript: encoder, decoder, CLI, validator, fuzzer ([src/](src/))
+- **Reference implementation** — dependency-free JavaScript: encoder, decoder, CLI (batch mode), validator, fuzzer ([src/](src/))
+- **Conformance vectors** — golden `.svb` files with SHA-256 manifest and byte-exactness tests: [vectors/](vectors/)
 - **Delivery** — Service Worker polyfill + comparison page: [live demo](https://kinti.github.io/svb/demo/)
 
 ## Why
@@ -66,12 +67,14 @@ SVB addresses each point at the format level:
 
 ```bash
 node src/cli.js encode in.svg out.svb
+node src/cli.js encode indir/ outdir/ [--strict]  # batch: every .svg, per-file warning report
 node src/cli.js decode out.svb back.svg
 node src/cli.js roundtrip in.svg      # encode→decode, writes the decoded SVG
 node src/cli.js bench in.svg [more…]  # svg/gzip/brotli/svb size table
 node src/cli.js validate in.svb [--json]  # conformance report + accessibility seal
-node src/cli.js fuzz [files…]             # mutation campaign against the decoder
-npm test                              # 44 tests (node:test, zero dependencies)
+node src/cli.js fuzz [files…]             # deterministic mutation campaign
+npm run fuzz:radamsa                      # 6,000-mutant radamsa campaign (needs radamsa)
+npm test                              # 56 tests (node:test, zero dependencies)
 ```
 
 Delivery uses a Service Worker: requests for `*.svb` are decoded (DEFLATE via `DecompressionStream`, then the reference decoder) and answered as `image/svg+xml`, so `<img src="icon.svb">` works in any current browser — the same "format + runtime" path that carried Lottie and Rive.
@@ -85,6 +88,7 @@ Security properties, by design: no executable constructs (removes the uploaded-S
 ## v0.2 limitations
 
 - Subset: `g`, `path`, `rect`, `circle`, `ellipse`, `line`, `polyline`, `polygon`, templates/instances, linear and radial gradients. **Not yet**: text, filters, clip/mask, embedded CSS, pattern fills.
+- Nothing is dropped silently: every unsupported feature the encoder skips (CSS, `<script>`, `clipPath`/`mask`/`filter`/`pattern`/`marker`/`symbol`, container mask/clip/filter attributes) is reported as a warning.
 - Presentation attributes only (no CSS inheritance from `<style>`).
 - Arc rotations quantized to whole degrees; coordinates to `1/coord_scale` (default 1/64).
 - Organic no-repetition artwork stays ~5% behind svg+brotli — geometry modeling is planned for v0.3.
@@ -95,7 +99,7 @@ Security properties, by design: no executable constructs (removes the uploaded-S
 2. **Entropy stage** (grammar-informed codes or rANS) — trigger: measured gap to svg+brotli > 10% after repetition modeling.
 3. **`<text>` and clip/mask** — the remaining subset gaps.
 4. ~~Validator + "accessible SVB" seal~~ — **core shipped in v0.2**: `svb validate` runs 14 conformance and accessibility checks (V-01…V-14, see [docs/validator.md](docs/validator.md)) and awards the **"SVB accesible" seal**. Next: report schema hardening + a11y-toolkit MCP integration.
-5. **Fuzzing campaign** — required before any production use with untrusted files.
+5. ~~Fuzzing campaign~~ — **shipped**: deterministic mutator in CI (`src/fuzz.js`) plus a 6,000-mutant radamsa campaign with 0 malformed outputs, 0 hangs, 0 crashes (see [SECURITY.md](SECURITY.md), reproducible via `npm run fuzz:radamsa`).
 6. **Rust → WASM port** of the hot path.
 
 ## Publication path
